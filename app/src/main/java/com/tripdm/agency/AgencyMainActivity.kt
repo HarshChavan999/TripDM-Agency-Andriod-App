@@ -190,28 +190,14 @@ fun AgencyMainPortal(
     var editingListing by remember { mutableStateOf<AgencyListing?>(null) }
     var activeChatConv by remember { mutableStateOf<ChatConversation?>(null) }
 
-    // Register FCM push token for background notifications
-    LaunchedEffect(profile.id) {
-        AgencyMessagingService.registerFCMToken(profile.id)
+    // Sync active chat conversation with AgencyNotificationHelper to suppress alerts while actively chatting
+    LaunchedEffect(activeChatConv) {
+        AgencyNotificationHelper.activeChatUserId = activeChatConv?.otherUserId
     }
 
-    // Real-time listener for incoming traveler inquiries (leads) to show heads-up notifications
-    DisposableEffect(profile.id) {
-        val chatRepo = AgencyChatRepository()
-        val leadListener = chatRepo.listenForNewLeads(profile.id) { senderName, messageText, senderId ->
-            // Only show heads-up notification if user is NOT currently inside the active chat thread with this user
-            if (activeChatConv?.otherUserId != senderId) {
-                AgencyNotificationHelper.showNotification(
-                    context = context,
-                    title = "New Lead: $senderName",
-                    message = messageText,
-                    senderId = senderId
-                )
-            }
-        }
-        onDispose {
-            leadListener.remove()
-        }
+    // Register FCM push token for notifications
+    LaunchedEffect(profile.id) {
+        AgencyMessagingService.registerFCMToken(profile.id)
     }
 
     // Handle incoming notification intent click
