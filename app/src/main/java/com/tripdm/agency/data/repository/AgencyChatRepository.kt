@@ -59,32 +59,32 @@ class AgencyChatRepository(
         onNewLead: (senderName: String, messageText: String, senderId: String) -> Unit
     ): com.google.firebase.firestore.ListenerRegistration {
         val trimmedAgencyId = agencyId.trim()
-        val listenerStartTime = System.currentTimeMillis()
+        var isInitialSnapshot = true
 
         return firestore.collection("chat_messages")
             .whereEqualTo("to_user_id", trimmedAgencyId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null) return@addSnapshotListener
 
+                // Skip the initial snapshot completely so existing messages
+                // NEVER trigger notifications when the app is opened or resumed!
+                if (isInitialSnapshot) {
+                    isInitialSnapshot = false
+                    return@addSnapshotListener
+                }
+
                 for (change in snapshot.documentChanges) {
                     if (change.type == com.google.firebase.firestore.DocumentChange.Type.ADDED) {
                         val doc = change.document
-                        val ts = doc.getTimestamp("created_at")?.toDate()?.time
-                            ?: doc.getLong("timestamp")
-                            ?: 0L
-
-                        // Notify for real-time incoming messages
-                        if (ts >= (listenerStartTime - 3000L)) {
-                            val senderId = doc.getString("from_user_id") ?: doc.getString("from") ?: ""
-                            if (senderId.isNotBlank() && senderId != trimmedAgencyId) {
-                                val text = doc.getString("message_text")
-                                    ?: doc.getString("content")
-                                    ?: "New inquiry received"
-                                val senderName = doc.getString("sender_name")
-                                    ?: doc.getString("userName")
-                                    ?: "Traveler"
-                                onNewLead(senderName, text, senderId)
-                            }
+                        val senderId = doc.getString("from_user_id") ?: doc.getString("from") ?: ""
+                        if (senderId.isNotBlank() && senderId != trimmedAgencyId) {
+                            val text = doc.getString("message_text")
+                                ?: doc.getString("content")
+                                ?: "New inquiry received"
+                            val senderName = doc.getString("sender_name")
+                                ?: doc.getString("userName")
+                                ?: "Traveler"
+                            onNewLead(senderName, text, senderId)
                         }
                     }
                 }

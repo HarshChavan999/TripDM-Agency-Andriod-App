@@ -22,6 +22,7 @@ import com.tripdm.agency.data.model.AgencyProfile
 import com.tripdm.agency.data.model.ChatConversation
 import com.tripdm.agency.data.repository.AgencyAuthRepository
 import com.tripdm.agency.data.repository.AgencyChatRepository
+import com.tripdm.agency.service.AgencyMessagingService
 import com.tripdm.agency.service.AgencyNotificationHelper
 import com.tripdm.agency.ui.components.AgencyBottomNavBar
 import com.tripdm.agency.ui.screens.*
@@ -56,10 +57,17 @@ class AgencyMainActivity : ComponentActivity() {
                 ActivityResultContracts.RequestPermission()
             ) { isGranted ->
                 android.util.Log.d("AgencyMainActivity", "POST_NOTIFICATIONS granted: $isGranted")
+                if (isGranted) {
+                    AgencyMessagingService.registerFCMToken()
+                }
             }
             if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                AgencyMessagingService.registerFCMToken()
             }
+        } else {
+            AgencyMessagingService.registerFCMToken()
         }
 
         googleSignInLauncher = registerForActivityResult(
@@ -182,16 +190,24 @@ fun AgencyMainPortal(
     var editingListing by remember { mutableStateOf<AgencyListing?>(null) }
     var activeChatConv by remember { mutableStateOf<ChatConversation?>(null) }
 
+    // Register FCM push token for background notifications
+    LaunchedEffect(profile.id) {
+        AgencyMessagingService.registerFCMToken(profile.id)
+    }
+
     // Real-time listener for incoming traveler inquiries (leads) to show heads-up notifications
     DisposableEffect(profile.id) {
         val chatRepo = AgencyChatRepository()
         val leadListener = chatRepo.listenForNewLeads(profile.id) { senderName, messageText, senderId ->
-            AgencyNotificationHelper.showNotification(
-                context = context,
-                title = "New Lead: $senderName",
-                message = messageText,
-                senderId = senderId
-            )
+            // Only show heads-up notification if user is NOT currently inside the active chat thread with this user
+            if (activeChatConv?.otherUserId != senderId) {
+                AgencyNotificationHelper.showNotification(
+                    context = context,
+                    title = "New Lead: $senderName",
+                    message = messageText,
+                    senderId = senderId
+                )
+            }
         }
         onDispose {
             leadListener.remove()
