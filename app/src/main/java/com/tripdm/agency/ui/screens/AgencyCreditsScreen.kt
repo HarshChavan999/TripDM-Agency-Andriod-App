@@ -1,0 +1,328 @@
+package com.tripdm.agency.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.tripdm.agency.data.model.CreditPlan
+import com.tripdm.agency.data.model.CreditTransaction
+import com.tripdm.agency.data.model.SampleCreditPlans
+import com.tripdm.agency.ui.theme.*
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AgencyCreditsScreen(
+    currentCredits: Int,
+    transactions: List<CreditTransaction>,
+    isPurchasing: Boolean,
+    purchaseMessage: String?,
+    onPurchasePlan: (CreditPlan) -> Unit,
+    onBack: () -> Unit
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Credits & Plans",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = PoppinsFontFamily,
+                        color = DeepNavy
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = DeepNavy)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(LightGray)
+                .padding(padding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Balance Card
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = DeepNavy),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MonetizationOn,
+                            contentDescription = null,
+                            tint = PrimaryOrange,
+                            modifier = Modifier.size(40.dp)
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "Remaining Balance",
+                            fontSize = 13.sp,
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontFamily = InterFontFamily
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "$currentCredits Credits",
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            fontFamily = PoppinsFontFamily
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Credits are used to publish new packages and contact leads.",
+                            fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.6f),
+                            fontFamily = InterFontFamily
+                        )
+                    }
+                }
+            }
+
+            if (!purchaseMessage.isNullOrBlank()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFE8F5E9), RoundedCornerShape(12.dp))
+                            .padding(14.dp)
+                    ) {
+                        Text(
+                            text = purchaseMessage,
+                            color = M3Success,
+                            fontSize = 13.sp,
+                            fontFamily = InterFontFamily,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            item {
+                Text(
+                    text = "Choose a Recharge Plan",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = DeepNavy,
+                    fontFamily = PoppinsFontFamily
+                )
+            }
+
+            // Plans
+            items(SampleCreditPlans) { plan ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (plan.isPopular) {
+                                Modifier.border(2.dp, PrimaryOrange, RoundedCornerShape(16.dp))
+                            } else Modifier
+                        ),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = plan.name,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = DeepNavy,
+                                    fontFamily = PoppinsFontFamily
+                                )
+                                Text(
+                                    text = plan.description,
+                                    fontSize = 12.sp,
+                                    color = TextSecondary,
+                                    fontFamily = InterFontFamily
+                                )
+                            }
+                            if (plan.isPopular) {
+                                Box(
+                                    modifier = Modifier
+                                        .background(PrimaryOrange, RoundedCornerShape(12.dp))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "POPULAR",
+                                        color = Color.White,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                text = "₹${plan.price.toInt()}",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = DeepNavy,
+                                fontFamily = PoppinsFontFamily
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "for +${plan.credits} Credits",
+                                fontSize = 13.sp,
+                                color = PrimaryOrange,
+                                fontWeight = FontWeight.SemiBold,
+                                fontFamily = InterFontFamily
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        plan.features.forEach { feat ->
+                            Row(
+                                modifier = Modifier.padding(vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = M3Success,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = feat,
+                                    fontSize = 12.sp,
+                                    color = SlateGray,
+                                    fontFamily = InterFontFamily
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = { onPurchasePlan(plan) },
+                            enabled = !isPurchasing,
+                            modifier = Modifier.fillMaxWidth().height(46.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = if (plan.isPopular) PrimaryOrange else DeepNavy)
+                        ) {
+                            Text(
+                                text = "Recharge ${plan.name}",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                fontFamily = InterFontFamily
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Payment History / Transactions
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Payment & Credit History",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = DeepNavy,
+                    fontFamily = PoppinsFontFamily
+                )
+            }
+
+            if (transactions.isEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                    ) {
+                        Box(modifier = Modifier.padding(20.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Text("No transaction records found.", fontSize = 12.sp, color = TextSecondary)
+                        }
+                    }
+                }
+            } else {
+                items(transactions) { tx ->
+                    val timeStr = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(tx.timestamp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = tx.description,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = DeepNavy,
+                                    fontFamily = InterFontFamily
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = timeStr,
+                                    fontSize = 11.sp,
+                                    color = TextSecondary,
+                                    fontFamily = InterFontFamily
+                                )
+                            }
+                            Text(
+                                text = "₹${tx.amount.toInt()}",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryOrange,
+                                fontFamily = InterFontFamily
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(40.dp))
+            }
+        }
+    }
+}
