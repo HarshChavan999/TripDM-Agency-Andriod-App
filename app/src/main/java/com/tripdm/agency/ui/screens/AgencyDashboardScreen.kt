@@ -19,10 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tripdm.agency.data.model.AgencyProfile
 import com.tripdm.agency.data.model.AnalyticsSummary
-import com.tripdm.agency.data.model.BookingRequest
 import com.tripdm.agency.data.model.ChatConversation
 import com.tripdm.agency.ui.components.StatCard
-import com.tripdm.agency.ui.components.StatusBadge
 import com.tripdm.agency.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -32,11 +30,10 @@ import java.util.Locale
 fun AgencyDashboardScreen(
     profile: AgencyProfile,
     analytics: AnalyticsSummary,
-    recentBookings: List<BookingRequest>,
     recentChats: List<ChatConversation>,
     onCreateListingClick: () -> Unit,
     onViewListingsClick: () -> Unit,
-    onViewBookingsClick: () -> Unit,
+    onViewChatsClick: () -> Unit,
     onViewCreditsClick: () -> Unit,
     onChatClick: (ChatConversation) -> Unit
 ) {
@@ -185,104 +182,28 @@ fun AgencyDashboardScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 StatCard(
-                    title = "Bookings",
-                    value = "${analytics.totalBookings}",
-                    icon = Icons.Default.CalendarMonth,
-                    iconTint = M3Success,
-                    iconBgColor = M3Success.copy(alpha = 0.1f),
-                    modifier = Modifier.weight(1f),
-                    subtitle = "${analytics.confirmedBookings} Confirmed"
-                )
-
-                StatCard(
-                    title = "Inquiries",
-                    value = "${analytics.totalInquiries}",
+                    title = "Traveler Leads",
+                    value = "${recentChats.size.coerceAtLeast(analytics.totalInquiries)}",
                     icon = Icons.Default.Chat,
                     iconTint = M3Info,
                     iconBgColor = M3Info.copy(alpha = 0.1f),
                     modifier = Modifier.weight(1f),
-                    subtitle = "Traveler leads"
+                    subtitle = "Active inquiries"
+                )
+
+                StatCard(
+                    title = "Available Credits",
+                    value = "${profile.credits}",
+                    icon = Icons.Default.MonetizationOn,
+                    iconTint = PrimaryOrange,
+                    iconBgColor = PrimaryOrange.copy(alpha = 0.1f),
+                    modifier = Modifier.weight(1f),
+                    subtitle = "Tap to recharge"
                 )
             }
         }
 
-        // Recent Inbound Bookings
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Recent Booking Requests",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = DeepNavy,
-                    fontFamily = PoppinsFontFamily
-                )
-                TextButton(onClick = onViewBookingsClick) {
-                    Text("See all", color = PrimaryOrange, fontSize = 13.sp, fontFamily = InterFontFamily)
-                }
-            }
-        }
-
-        if (recentBookings.isEmpty()) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
-                ) {
-                    Box(modifier = Modifier.padding(24.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "No booking requests received yet.",
-                            fontSize = 13.sp,
-                            color = TextSecondary,
-                            fontFamily = InterFontFamily
-                        )
-                    }
-                }
-            }
-        } else {
-            items(recentBookings) { booking ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onViewBookingsClick() },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = booking.listingTitle,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = DeepNavy,
-                                fontFamily = InterFontFamily
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "${booking.userName} • ${booking.travelers} Travelers",
-                                fontSize = 12.sp,
-                                color = TextSecondary,
-                                fontFamily = InterFontFamily
-                            )
-                        }
-                        StatusBadge(status = booking.status)
-                    }
-                }
-            }
-        }
-
-        // Recent Customer Chats
+        // Recent Customer Chats / Leads
         item {
             Spacer(modifier = Modifier.height(8.dp))
             Row(
@@ -291,12 +212,15 @@ fun AgencyDashboardScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Traveler Inquiries",
+                    text = "Traveler Leads & Inquiries",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = DeepNavy,
                     fontFamily = PoppinsFontFamily
                 )
+                TextButton(onClick = onViewChatsClick) {
+                    Text("See all", color = PrimaryOrange, fontSize = 13.sp, fontFamily = InterFontFamily)
+                }
             }
         }
 

@@ -15,9 +15,9 @@ class AgencyChatRepository(
 ) {
 
     fun observeConversations(agencyId: String): Flow<List<ChatConversation>> = callbackFlow {
-        // Listen to messages where agency is sender or recipient
+        val trimmedAgencyId = agencyId.trim()
         val listener = firestore.collection("chat_messages")
-            .whereEqualTo("to_user_id", agencyId)
+            .whereEqualTo("to_user_id", trimmedAgencyId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(emptyList())
@@ -27,7 +27,7 @@ class AgencyChatRepository(
                     val groupedByUser = mutableMapOf<String, ChatConversation>()
                     for (doc in snapshot.documents) {
                         val senderId = doc.getString("from_user_id") ?: doc.getString("from") ?: ""
-                        if (senderId.isEmpty()) continue
+                        if (senderId.isEmpty() || senderId == trimmedAgencyId) continue
                         val text = doc.getString("message_text") ?: doc.getString("content") ?: ""
                         val ts = doc.getTimestamp("created_at")?.toDate()?.time
                             ?: doc.getLong("timestamp") ?: System.currentTimeMillis()
@@ -43,7 +43,7 @@ class AgencyChatRepository(
                                 otherUserEmail = senderEmail,
                                 lastMessage = text,
                                 lastMessageTimestamp = ts,
-                                unreadCount = if (doc.getBoolean("is_read") == false) 1 else 0,
+                                unreadCount = if (doc.getBoolean("is_read") == false || doc.getString("status") == "sent") 1 else 0,
                                 relatedListingTitle = listingTitle
                             )
                         }
@@ -54,9 +54,47 @@ class AgencyChatRepository(
         awaitClose { listener.remove() }
     }
 
+    fun listenForNewLeads(
+        agencyId: String,
+        onNewLead: (senderName: String, messageText: String, senderId: String) -> Unit
+    ): com.google.firebase.firestore.ListenerRegistration {
+        val trimmedAgencyId = agencyId.trim()
+        val listenerStartTime = System.currentTimeMillis()
+
+        return firestore.collection("chat_messages")
+            .whereEqualTo("to_user_id", trimmedAgencyId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) return@addSnapshotListener
+
+                for (change in snapshot.documentChanges) {
+                    if (change.type == com.google.firebase.firestore.DocumentChange.Type.ADDED) {
+                        val doc = change.document
+                        val ts = doc.getTimestamp("created_at")?.toDate()?.time
+                            ?: doc.getLong("timestamp")
+                            ?: 0L
+
+                        // Notify for real-time incoming messages
+                        if (ts >= (listenerStartTime - 3000L)) {
+                            val senderId = doc.getString("from_user_id") ?: doc.getString("from") ?: ""
+                            if (senderId.isNotBlank() && senderId != trimmedAgencyId) {
+                                val text = doc.getString("message_text")
+                                    ?: doc.getString("content")
+                                    ?: "New inquiry received"
+                                val senderName = doc.getString("sender_name")
+                                    ?: doc.getString("userName")
+                                    ?: "Traveler"
+                                onNewLead(senderName, text, senderId)
+                            }
+                        }
+                    }
+                }
+            }
+    }
+
     fun observeMessages(agencyId: String, otherUserId: String): Flow<List<ChatMessage>> = callbackFlow {
+        val trimmedAgencyId = agencyId.trim()
         val listener = firestore.collection("chat_messages")
-            .whereIn("from_user_id", listOf(agencyId, otherUserId))
+            .whereIn("from_user_id", listOf(trimmedAgencyId, otherUserId))
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(emptyList())
@@ -66,12 +104,14 @@ class AgencyChatRepository(
                     val list = snapshot.documents.mapNotNull { doc ->
                         val from = doc.getString("from_user_id") ?: doc.getString("from") ?: ""
                         val to = doc.getString("to_user_id") ?: doc.getString("to") ?: ""
-                        if (!((from == agencyId && to == otherUserId) || (from == otherUserId && to == agencyId))) {
+                        if (!((from == trimmedAgencyId && to == otherUserId) || (from == otherUserId && to == trimmedAgencyId))) {
                             return@mapNotNull null
                         }
                         val text = doc.getString("message_text") ?: doc.getString("content") ?: ""
                         val ts = doc.getTimestamp("created_at")?.toDate()?.time
                             ?: doc.getLong("timestamp") ?: System.currentTimeMillis()
+
+                        val isRead = doc.getBoolean("is_read") == true || doc.getString("status") == "read"
 
                         ChatMessage(
                             id = doc.id,
@@ -79,7 +119,7 @@ class AgencyChatRepository(
                             to = to,
                             content = text,
                             timestamp = ts,
-                            status = if (doc.getBoolean("is_read") == true) ChatMessageStatus.READ else ChatMessageStatus.SENT,
+                            status = if (isRead) ChatMessageStatus.READ else ChatMessageStatus.SENT,
                             listingTitle = doc.getString("listing_title") ?: doc.getString("listingTitle")
                         )
                     }.sortedBy { it.timestamp }
@@ -98,17 +138,19 @@ class AgencyChatRepository(
     ): Result<Unit> {
         return try {
             val docRef = firestore.collection("chat_messages").document()
+            val now = System.currentTimeMillis()
             val data = hashMapOf(
                 "id" to docRef.id,
-                "from_user_id" to agencyId,
-                "to_user_id" to targetUserId,
+                "from_user_id" to agencyId.trim(),
+                "to_user_id" to targetUserId.trim(),
                 "sender_name" to agencyName,
                 "message_text" to content,
                 "content" to content,
-                "from" to agencyId,
-                "to" to targetUserId,
+                "from" to agencyId.trim(),
+                "to" to targetUserId.trim(),
                 "created_at" to com.google.firebase.Timestamp.now(),
-                "timestamp" to System.currentTimeMillis(),
+                "timestamp" to now,
+                "status" to "sent",
                 "is_read" to false,
                 "listing_title" to listingTitle
             )
@@ -119,3 +161,4 @@ class AgencyChatRepository(
         }
     }
 }
+

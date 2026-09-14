@@ -21,6 +21,7 @@ import com.tripdm.agency.data.model.AgencyListing
 import com.tripdm.agency.data.model.AgencyProfile
 import com.tripdm.agency.data.model.ChatConversation
 import com.tripdm.agency.data.repository.AgencyAuthRepository
+import com.tripdm.agency.data.repository.AgencyChatRepository
 import com.tripdm.agency.service.AgencyNotificationHelper
 import com.tripdm.agency.ui.components.AgencyBottomNavBar
 import com.tripdm.agency.ui.screens.*
@@ -31,7 +32,6 @@ enum class AgencyScreen {
     DASHBOARD,
     LISTINGS,
     CREATE_EDIT_LISTING,
-    BOOKINGS,
     CHAT_LIST,
     CHAT_THREAD,
     PROFILE,
@@ -49,6 +49,18 @@ class AgencyMainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         AgencyNotificationHelper.createNotificationChannel(this)
+
+        // Request POST_NOTIFICATIONS runtime permission on Android 13+ (API 33+)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            val notificationPermissionLauncher = registerForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { isGranted ->
+                android.util.Log.d("AgencyMainActivity", "POST_NOTIFICATIONS granted: $isGranted")
+            }
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
 
         googleSignInLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
@@ -161,27 +173,51 @@ fun AgencyMainPortal(
     onSignOut: () -> Unit,
     dashboardViewModel: AgencyDashboardViewModel = viewModel(),
     listingViewModel: AgencyListingViewModel = viewModel(),
-    bookingViewModel: AgencyBookingViewModel = viewModel(),
     chatViewModel: AgencyChatViewModel = viewModel(),
     profileViewModel: AgencyProfileViewModel = viewModel()
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     var currentScreen by remember { mutableStateOf(AgencyScreen.DASHBOARD) }
     var selectedBottomTab by remember { mutableIntStateOf(0) }
     var editingListing by remember { mutableStateOf<AgencyListing?>(null) }
     var activeChatConv by remember { mutableStateOf<ChatConversation?>(null) }
 
+    // Real-time listener for incoming traveler inquiries (leads) to show heads-up notifications
+    DisposableEffect(profile.id) {
+        val chatRepo = AgencyChatRepository()
+        val leadListener = chatRepo.listenForNewLeads(profile.id) { senderName, messageText, senderId ->
+            AgencyNotificationHelper.showNotification(
+                context = context,
+                title = "New Lead: $senderName",
+                message = messageText,
+                senderId = senderId
+            )
+        }
+        onDispose {
+            leadListener.remove()
+        }
+    }
+
+    // Handle incoming notification intent click
+    LaunchedEffect(Unit) {
+        val activity = context as? ComponentActivity
+        val openChatId = activity?.intent?.getStringExtra("OPEN_CHAT_USER_ID")
+        if (!openChatId.isNullOrBlank()) {
+            selectedBottomTab = 2
+            currentScreen = AgencyScreen.CHAT_LIST
+        }
+    }
+
     // Init ViewModels with agency ID
     LaunchedEffect(profile.id) {
         dashboardViewModel.initialize(profile.id, profile.credits)
         listingViewModel.loadAgencyListings(profile.id)
-        bookingViewModel.loadAgencyBookings(profile.id)
         chatViewModel.loadConversations(profile.id)
         profileViewModel.loadTransactions(profile.id)
     }
 
     // Collect States
     val analytics by dashboardViewModel.analytics.collectAsState()
-    val recentBookings by dashboardViewModel.recentBookings.collectAsState()
     val recentChats by dashboardViewModel.recentChats.collectAsState()
 
     val filteredListings by listingViewModel.filteredListings.collectAsState()
@@ -190,15 +226,16 @@ fun AgencyMainPortal(
     val isSubmittingListing by listingViewModel.isSubmitting.collectAsState()
     val listingMessage by listingViewModel.operationMessage.collectAsState()
 
-    val filteredBookings by bookingViewModel.filteredBookings.collectAsState()
-    val bookingTab by bookingViewModel.selectedTab.collectAsState()
-
     val conversations by chatViewModel.conversations.collectAsState()
     val activeMessages by chatViewModel.activeMessages.collectAsState()
 
     val transactions by profileViewModel.transactions.collectAsState()
     val isPurchasingCredits by profileViewModel.isPurchasing.collectAsState()
     val purchaseSuccessMsg by profileViewModel.purchaseSuccess.collectAsState()
+
+    val unreadLeadsCount = remember(conversations) {
+        conversations.sumOf { it.unreadCount }
+    }
 
     // Handle back button for sub-screens
     BackHandler(enabled = currentScreen != AgencyScreen.DASHBOARD) {
@@ -213,7 +250,8 @@ fun AgencyMainPortal(
                 currentScreen = AgencyScreen.CHAT_LIST
             }
             AgencyScreen.CREDITS -> {
-                currentScreen = AgencyScreen.PROFILE
+                selectedBottomTab = 0
+                currentScreen = AgencyScreen.DASHBOARD
             }
             else -> {
                 selectedBottomTab = 0
@@ -232,12 +270,13 @@ fun AgencyMainPortal(
                         currentScreen = when (index) {
                             0 -> AgencyScreen.DASHBOARD
                             1 -> AgencyScreen.LISTINGS
-                            2 -> AgencyScreen.BOOKINGS
-                            3 -> AgencyScreen.CHAT_LIST
+                            2 -> AgencyScreen.CHAT_LIST
+                            3 -> AgencyScreen.CREDITS
                             4 -> AgencyScreen.PROFILE
                             else -> AgencyScreen.DASHBOARD
                         }
-                    }
+                    },
+                    unreadLeadsCount = unreadLeadsCount
                 )
             }
         }
@@ -252,7 +291,6 @@ fun AgencyMainPortal(
                     AgencyDashboardScreen(
                         profile = profile,
                         analytics = analytics,
-                        recentBookings = recentBookings,
                         recentChats = recentChats,
                         onCreateListingClick = {
                             editingListing = null
@@ -262,11 +300,12 @@ fun AgencyMainPortal(
                             selectedBottomTab = 1
                             currentScreen = AgencyScreen.LISTINGS
                         },
-                        onViewBookingsClick = {
+                        onViewChatsClick = {
                             selectedBottomTab = 2
-                            currentScreen = AgencyScreen.BOOKINGS
+                            currentScreen = AgencyScreen.CHAT_LIST
                         },
                         onViewCreditsClick = {
+                            selectedBottomTab = 3
                             currentScreen = AgencyScreen.CREDITS
                         },
                         onChatClick = { conv ->
@@ -328,32 +367,6 @@ fun AgencyMainPortal(
                         }
                     )
                 }
-                AgencyScreen.BOOKINGS -> {
-                    AgencyBookingsScreen(
-                        bookings = filteredBookings,
-                        selectedTab = bookingTab,
-                        onTabSelected = { bookingViewModel.setFilterTab(it) },
-                        onConfirmBooking = { id ->
-                            bookingViewModel.updateStatus(id, "confirmed")
-                        },
-                        onCancelBooking = { id ->
-                            bookingViewModel.updateStatus(id, "cancelled")
-                        },
-                        onChatWithCustomer = { booking ->
-                            val conv = ChatConversation(
-                                otherUserId = booking.userId,
-                                otherUserName = booking.userName,
-                                otherUserEmail = booking.userEmail,
-                                lastMessage = "Inquiry regarding ${booking.listingTitle}",
-                                lastMessageTimestamp = System.currentTimeMillis(),
-                                relatedListingTitle = booking.listingTitle
-                            )
-                            activeChatConv = conv
-                            chatViewModel.openConversation(profile.id, conv)
-                            currentScreen = AgencyScreen.CHAT_THREAD
-                        }
-                    )
-                }
                 AgencyScreen.CHAT_LIST -> {
                     AgencyChatListScreen(
                         conversations = conversations,
@@ -385,6 +398,7 @@ fun AgencyMainPortal(
                     AgencyProfileScreen(
                         profile = profile,
                         onViewCreditsClick = {
+                            selectedBottomTab = 3
                             currentScreen = AgencyScreen.CREDITS
                         },
                         onSignOut = onSignOut
@@ -400,7 +414,8 @@ fun AgencyMainPortal(
                             profileViewModel.purchasePlan(profile.id, plan)
                         },
                         onBack = {
-                            currentScreen = AgencyScreen.PROFILE
+                            selectedBottomTab = 0
+                            currentScreen = AgencyScreen.DASHBOARD
                         }
                     )
                 }

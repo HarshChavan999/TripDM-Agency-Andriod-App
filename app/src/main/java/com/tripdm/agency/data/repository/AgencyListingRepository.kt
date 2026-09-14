@@ -15,76 +15,218 @@ class AgencyListingRepository(
 ) {
 
     fun observeAgencyListings(agencyId: String): Flow<List<AgencyListing>> = callbackFlow {
+        val trimmedId = agencyId.trim()
         val listener = firestore.collection("listings")
-            .whereEqualTo("agencyId", agencyId)
+            .whereEqualTo("agencyId", trimmedId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    android.util.Log.e("AgencyListingRepo", "Error observing listings: ${error.message}", error)
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
                     val listings = snapshot.documents.mapNotNull { doc ->
                         try {
-                            val placesRaw = doc.get("placesCovered") as? List<Map<String, Any>> ?: emptyList()
-                            val places = placesRaw.map { p ->
-                                PlaceCovered(
-                                    id = p["id"] as? String ?: "",
-                                    name = p["name"] as? String ?: "",
-                                    imageUrls = p["imageUrls"] as? List<String> ?: emptyList()
-                                )
-                            }
-
-                            val itineraryRaw = doc.get("itinerary") as? List<Map<String, Any>> ?: emptyList()
-                            val itinerary = itineraryRaw.map { day ->
-                                ItineraryDay(
-                                    day = (day["day"] as? Long)?.toInt() ?: 1,
-                                    placeName = day["placeName"] as? String ?: "",
-                                    description = day["description"] as? String ?: "",
-                                    activities = day["activities"] as? List<String> ?: emptyList(),
-                                    imageUrls = day["imageUrls"] as? List<String> ?: emptyList()
-                                )
-                            }
-
-                            AgencyListing(
-                                id = doc.id,
-                                agencyId = doc.getString("agencyId") ?: agencyId,
-                                agencyName = doc.getString("agencyName") ?: "",
-                                title = doc.getString("title") ?: "",
-                                packageType = doc.getString("packageType") ?: "domestic",
-                                countryName = doc.getString("countryName") ?: "",
-                                stateName = doc.getString("stateName") ?: "",
-                                pickUpLocation = doc.getString("pickUpLocation") ?: "",
-                                dropLocation = doc.getString("dropLocation") ?: "",
-                                placesCovered = places,
-                                tourCategories = doc.get("tourCategories") as? List<String> ?: emptyList(),
-                                hotelType = doc.getString("hotelType") ?: "deluxe",
-                                mealPlan = doc.getString("mealPlan") ?: "breakfast",
-                                itinerary = itinerary,
-                                inclusions = doc.get("inclusions") as? List<String> ?: emptyList(),
-                                exclusions = doc.get("exclusions") as? List<String> ?: emptyList(),
-                                cost = doc.getDouble("cost") ?: doc.getDouble("price") ?: 0.0,
-                                price = doc.getDouble("price") ?: doc.getDouble("cost") ?: 0.0,
-                                duration = doc.getLong("duration")?.toInt() ?: itinerary.size.coerceAtLeast(1),
-                                discountCategory = doc.getString("discountCategory") ?: "none",
-                                isTrending = doc.getBoolean("isTrending") ?: false,
-                                season = doc.getString("season") ?: "all-seasons",
-                                eventType = doc.getString("eventType") ?: "",
-                                experienceType = doc.get("experienceType") as? List<String> ?: emptyList(),
-                                photos = doc.get("photos") as? List<String> ?: emptyList(),
-                                approved = doc.getBoolean("approved") ?: false,
-                                approvalStatus = doc.getString("approvalStatus") ?: if (doc.getBoolean("approved") == true) "approved" else "pending",
-                                viewsCount = doc.getLong("viewsCount")?.toInt() ?: 0,
-                                inquiriesCount = doc.getLong("inquiriesCount")?.toInt() ?: 0,
-                                createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
-                            )
+                            parseListingDocument(doc, trimmedId)
                         } catch (e: Exception) {
+                            android.util.Log.e("AgencyListingRepo", "Error parsing listing ${doc.id}: ${e.message}", e)
                             null
                         }
                     }
+                    android.util.Log.d("AgencyListingRepo", "Parsed ${listings.size} listings for agency $trimmedId")
                     trySend(listings)
                 }
             }
         awaitClose { listener.remove() }
+    }
+
+    private fun parseListingDocument(doc: com.google.firebase.firestore.DocumentSnapshot, fallbackAgencyId: String): AgencyListing {
+        val placesRaw = doc.get("placesCovered")
+        val places: List<PlaceCovered> = when (placesRaw) {
+            is List<*> -> placesRaw.mapIndexedNotNull { index, item ->
+                when (item) {
+                    is Map<*, *> -> PlaceCovered(
+                        id = item["id"]?.toString() ?: "place_$index",
+                        name = item["name"]?.toString() ?: item["placeName"]?.toString() ?: "",
+                        imageUrls = item["imageUrls"].toStringList().ifEmpty { item["photos"].toStringList() }
+                    )
+                    is String -> PlaceCovered(
+                        id = "place_$index",
+                        name = item,
+                        imageUrls = emptyList()
+                    )
+                    else -> null
+                }
+            }
+            else -> emptyList()
+        }
+
+        val itineraryRaw = doc.get("itinerary")
+        val itinerary: List<ItineraryDay> = when (itineraryRaw) {
+            is List<*> -> itineraryRaw.mapIndexedNotNull { index, item ->
+                when (item) {
+                    is Map<*, *> -> ItineraryDay(
+                        day = item["day"].toIntSafe(index + 1),
+                        placeName = item["placeName"]?.toString()
+                            ?: item["title"]?.toString()
+                            ?: item["name"]?.toString()
+                            ?: "Day ${index + 1}",
+                        description = item["description"]?.toString() ?: "",
+                        activities = item["activities"].toStringList(),
+                        imageUrls = item["imageUrls"].toStringList().ifEmpty { item["photos"].toStringList() }
+                    )
+                    is String -> ItineraryDay(
+                        day = index + 1,
+                        placeName = "Day ${index + 1}",
+                        description = item,
+                        activities = emptyList(),
+                        imageUrls = emptyList()
+                    )
+                    else -> null
+                }
+            }
+            else -> emptyList()
+        }
+
+        val costVal = doc.get("cost").toDoubleSafe()
+        val priceVal = doc.get("price").toDoubleSafe()
+        val finalCost = if (costVal > 0.0) costVal else priceVal
+        val finalPrice = if (priceVal > 0.0) priceVal else costVal
+
+        val stateNameVal = doc.get("stateName").toSingleString().ifEmpty {
+            doc.get("stateNames").toStringList().joinToString(", ")
+        }
+
+        val countryNameVal = doc.get("countryName").toSingleString().ifEmpty {
+            doc.get("countryNames").toStringList().firstOrNull() ?: ""
+        }
+
+        val hotelTypeVal = doc.get("hotelType").toSingleString().ifEmpty {
+            doc.get("hotelTypes").toStringList().firstOrNull() ?: "deluxe"
+        }
+
+        val mealPlanVal = doc.get("mealPlan").toSingleString().ifEmpty {
+            doc.get("mealPlan").toStringList().firstOrNull() ?: "breakfast"
+        }
+
+        val photoList = (
+            doc.get("photos").toStringList() +
+            doc.get("imageUrls").toStringList() +
+            doc.get("images").toStringList() +
+            listOfNotNull(doc.get("imageUrl").toSingleString().takeIf { it.isNotBlank() })
+        ).distinct()
+
+        val isApproved = doc.get("approved").toBooleanSafe() ||
+                doc.get("approvalStatus").toSingleString().equals("approved", ignoreCase = true)
+
+        val approvalStatus = doc.get("approvalStatus").toSingleString().ifEmpty {
+            if (isApproved) "approved" else "pending"
+        }
+
+        val durationVal = doc.get("duration").toIntSafe(0).let {
+            if (it > 0) it else itinerary.size.coerceAtLeast(1)
+        }
+
+        val resolvedAgencyId = doc.get("agencyId").toSingleString().ifEmpty {
+            doc.get("agency_id").toSingleString(fallbackAgencyId)
+        }
+
+        return AgencyListing(
+            id = doc.id,
+            agencyId = resolvedAgencyId,
+            agencyName = doc.get("agencyName").toSingleString().ifEmpty { doc.get("companyName").toSingleString() },
+            title = doc.get("title").toSingleString().ifEmpty { doc.get("name").toSingleString() },
+            packageType = doc.get("packageType").toSingleString("domestic"),
+            countryName = countryNameVal,
+            stateName = stateNameVal,
+            pickUpLocation = doc.get("pickUpLocation").toSingleString(),
+            dropLocation = doc.get("dropLocation").toSingleString(),
+            placesCovered = places,
+            tourCategories = doc.get("tourCategories").toStringList(),
+            hotelType = hotelTypeVal,
+            mealPlan = mealPlanVal,
+            itinerary = itinerary,
+            inclusions = doc.get("inclusions").toStringList().ifEmpty { doc.get("defaultInclusions").toStringList() },
+            exclusions = doc.get("exclusions").toStringList().ifEmpty { doc.get("defaultExclusions").toStringList() },
+            cost = finalCost,
+            price = finalPrice,
+            duration = durationVal,
+            discountCategory = doc.get("discountCategory").toSingleString("none"),
+            isTrending = doc.get("isTrending").toBooleanSafe(),
+            season = doc.get("season").toSingleString("all-seasons"),
+            eventType = doc.get("eventType").toSingleString(),
+            experienceType = doc.get("experienceType").toStringList(),
+            photos = photoList,
+            approved = isApproved,
+            approvalStatus = approvalStatus,
+            viewsCount = doc.get("viewsCount").toIntSafe(0),
+            inquiriesCount = doc.get("inquiriesCount").toIntSafe(0),
+            createdAt = doc.get("createdAt").toLongSafe(System.currentTimeMillis())
+        )
+    }
+
+    private fun Any?.toSingleString(default: String = ""): String {
+        return when (this) {
+            is String -> this.trim()
+            is List<*> -> this.firstOrNull()?.toString()?.trim() ?: default
+            null -> default
+            else -> this.toString().trim()
+        }
+    }
+
+    private fun Any?.toDoubleSafe(default: Double = 0.0): Double {
+        return when (this) {
+            is Number -> this.toDouble()
+            is String -> this.trim().toDoubleOrNull() ?: default
+            else -> default
+        }
+    }
+
+    private fun Any?.toIntSafe(default: Int = 0): Int {
+        return when (this) {
+            is Number -> this.toInt()
+            is String -> this.trim().toIntOrNull() ?: default
+            else -> default
+        }
+    }
+
+    private fun Any?.toLongSafe(default: Long = System.currentTimeMillis()): Long {
+        return when (this) {
+            is com.google.firebase.Timestamp -> this.toDate().time
+            is Number -> this.toLong()
+            is String -> this.trim().toLongOrNull() ?: default
+            is java.util.Date -> this.time
+            else -> default
+        }
+    }
+
+    private fun Any?.toBooleanSafe(default: Boolean = false): Boolean {
+        return when (this) {
+            is Boolean -> this
+            is String -> this.equals("true", ignoreCase = true) || this.equals("approved", ignoreCase = true)
+            is Number -> this.toInt() != 0
+            else -> default
+        }
+    }
+
+    private fun Any?.toStringList(): List<String> {
+        return when (this) {
+            is List<*> -> this.mapNotNull { item ->
+                when (item) {
+                    is String -> item.trim().takeIf { it.isNotEmpty() }
+                    null -> null
+                    else -> item.toString().trim().takeIf { it.isNotEmpty() }
+                }
+            }
+            is String -> {
+                val s = this.trim()
+                if (s.isEmpty()) emptyList()
+                else if (s.contains("\n")) s.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
+                else if (s.contains(",")) s.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                else listOf(s)
+            }
+            else -> emptyList()
+        }
     }
 
     suspend fun createListing(listing: AgencyListing): Result<String> {

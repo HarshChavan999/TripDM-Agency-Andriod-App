@@ -11,8 +11,8 @@ import com.tripdm.agency.AgencyMainActivity
 import com.tripdm.agency.R
 
 object AgencyNotificationHelper {
-    const val CHANNEL_ID = "tripdm_agency_notifications"
-    const val CHANNEL_NAME = "TripDM Agency Inquiries & Bookings"
+    const val CHANNEL_ID = "tripdm_agency_leads"
+    const val CHANNEL_NAME = "TripDM Traveler Leads & Inquiries"
 
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -21,21 +21,32 @@ object AgencyNotificationHelper {
                 CHANNEL_NAME,
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Notifications for new customer booking requests and chat inquiries"
+                description = "Real-time notifications for incoming traveler leads and chat inquiries"
                 enableVibration(true)
+                vibrationPattern = longArrayOf(0, 350, 200, 350)
+                enableLights(true)
             }
             val manager = context.getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
         }
     }
 
-    fun showNotification(context: Context, title: String, message: String, notificationId: Int = 1002) {
+    fun showNotification(
+        context: Context,
+        title: String,
+        message: String,
+        senderId: String? = null,
+        notificationId: Int = (System.currentTimeMillis() % 100000).toInt()
+    ) {
         val intent = Intent(context, AgencyMainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            if (senderId != null) {
+                putExtra("OPEN_CHAT_USER_ID", senderId)
+            }
         }
         val pendingIntent = PendingIntent.getActivity(
             context,
-            0,
+            notificationId,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -44,7 +55,10 @@ object AgencyNotificationHelper {
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)
             .setContentText(message)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message).setSummaryText("New Traveler Lead"))
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setVibrate(longArrayOf(0, 350, 200, 350))
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
 
