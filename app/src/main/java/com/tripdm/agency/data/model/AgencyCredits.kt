@@ -23,28 +23,28 @@ data class CreditTransaction(
 
 val SampleCreditPlans = listOf(
     CreditPlan(
-        id = "starter_100",
-        name = "Starter Pack",
-        credits = 100,
-        price = 999.0,
-        description = "Great for small agencies just starting out.",
-        features = listOf("Publish up to 5 packages", "Standard support", "Chat with travelers")
+        id = "starter",
+        name = "Standard Plan",
+        credits = 200,
+        price = 2000.0,
+        description = "Best for active agencies replying to holiday inquiries.",
+        features = listOf("Publish up to 10 packages", "200 credits per lead", "Priority lead routing")
     ),
     CreditPlan(
-        id = "pro_300",
-        name = "Pro Growth",
-        credits = 300,
-        price = 2499.0,
-        description = "Most popular for growing travel agencies.",
+        id = "premium",
+        name = "Premium Plan",
+        credits = 500,
+        price = 5000.0,
+        description = "For frequent high-volume agency messaging needs.",
         isPopular = true,
-        features = listOf("Publish up to 20 packages", "Priority lead routing", "Verified agency badge", "Email & chat support")
+        features = listOf("Publish up to 50 packages", "175 credits per lead", "Verified agency badge", "Email & chat support")
     ),
     CreditPlan(
-        id = "enterprise_1000",
-        name = "Enterprise Unlimited",
+        id = "vip",
+        name = "VIP Plan",
         credits = 1000,
-        price = 6999.0,
-        description = "For established agencies handling heavy volume.",
-        features = listOf("Unlimited package listings", "Featured on homepage", "Dedicated account manager", "24/7 VIP support")
+        price = 10000.0,
+        description = "Ultimate package for top agencies wanting maximum visibility.",
+        features = listOf("Unlimited package listings", "150 credits per lead", "Featured on homepage", "Dedicated account manager")
     )
 )

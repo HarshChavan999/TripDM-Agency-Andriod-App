@@ -210,9 +210,12 @@ fun AgencyMainPortal(
         }
     }
 
-    // Init ViewModels with agency ID
-    LaunchedEffect(profile.id) {
+    // Init ViewModels with agency ID and sync real-time credits
+    LaunchedEffect(profile.id, profile.credits) {
         dashboardViewModel.initialize(profile.id, profile.credits)
+    }
+
+    LaunchedEffect(profile.id) {
         listingViewModel.loadAgencyListings(profile.id)
         chatViewModel.loadConversations(profile.id)
         profileViewModel.loadTransactions(profile.id)
@@ -232,6 +235,7 @@ fun AgencyMainPortal(
     val activeMessages by chatViewModel.activeMessages.collectAsState()
 
     val transactions by profileViewModel.transactions.collectAsState()
+    val creditPlans by profileViewModel.creditPlans.collectAsState()
     val isPurchasingCredits by profileViewModel.isPurchasing.collectAsState()
     val purchaseSuccessMsg by profileViewModel.purchaseSuccess.collectAsState()
 
@@ -263,6 +267,7 @@ fun AgencyMainPortal(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (currentScreen != AgencyScreen.CREATE_EDIT_LISTING && currentScreen != AgencyScreen.CHAT_THREAD) {
                 AgencyBottomNavBar(
@@ -383,11 +388,22 @@ fun AgencyMainPortal(
                     activeChatConv?.let { conv ->
                         AgencyChatScreen(
                             currentAgencyId = profile.id,
+                            currentAgencyName = profile.companyName,
                             conversation = conv,
                             messages = activeMessages,
-                            onSendMessage = { content ->
-                                chatViewModel.sendMessage(profile.id, profile.companyName, content)
+                            onSendMessage = { content, replyToId, replyToContent, replyToSenderName ->
+                                chatViewModel.sendMessage(
+                                    agencyId = profile.id,
+                                    agencyName = profile.companyName,
+                                    content = content,
+                                    replyToId = replyToId,
+                                    replyToContent = replyToContent,
+                                    replyToSenderName = replyToSenderName
+                                )
                             },
+                            onDeleteMessage = { msgId -> chatViewModel.deleteMessage(msgId) },
+                            onEditMessage = { msgId, newContent -> chatViewModel.editMessage(msgId, newContent) },
+                            onReactToMessage = { msgId, emoji -> chatViewModel.reactToMessage(msgId, profile.id, emoji) },
                             onBack = {
                                 chatViewModel.closeActiveConversation()
                                 activeChatConv = null
@@ -399,6 +415,7 @@ fun AgencyMainPortal(
                 AgencyScreen.PROFILE -> {
                     AgencyProfileScreen(
                         profile = profile,
+                        transactions = transactions,
                         onViewCreditsClick = {
                             selectedBottomTab = 3
                             currentScreen = AgencyScreen.CREDITS
@@ -409,11 +426,16 @@ fun AgencyMainPortal(
                 AgencyScreen.CREDITS -> {
                     AgencyCreditsScreen(
                         currentCredits = profile.credits,
+                        currentPlan = profile.plan,
+                        creditPlans = creditPlans,
                         transactions = transactions,
                         isPurchasing = isPurchasingCredits,
                         purchaseMessage = purchaseSuccessMsg,
                         onPurchasePlan = { plan ->
                             profileViewModel.purchasePlan(profile.id, plan)
+                        },
+                        onClearPurchaseMessage = {
+                            profileViewModel.clearPurchaseMessage()
                         },
                         onBack = {
                             selectedBottomTab = 0

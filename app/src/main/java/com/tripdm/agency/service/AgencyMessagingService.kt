@@ -133,16 +133,30 @@ class AgencyMessagingService : FirebaseMessagingService() {
             ?: data["from_user_id"]
             ?: data["from"]
 
+        val isExplicitNewLead = data["is_new_lead"]?.lowercase() == "true"
+            || data["isNewLead"]?.lowercase() == "true"
+            || data["type"] == "new_lead"
+            || data["event"] == "new_lead"
+            || (remoteMessage.notification?.title?.startsWith("New Lead", ignoreCase = true) == true)
+            || (remoteMessage.notification?.title?.startsWith("New Inquiry", ignoreCase = true) == true)
+
+        val cleanSenderName = senderName
+            .replace("^New Lead:\\s*".toRegex(RegexOption.IGNORE_CASE), "")
+            .replace("^New Inquiry:\\s*".toRegex(RegexOption.IGNORE_CASE), "")
+
+        val finalTitle = if (isExplicitNewLead) {
+            "New Lead: $cleanSenderName"
+        } else {
+            cleanSenderName
+        }
+
         AgencyNotificationHelper.createNotificationChannel(applicationContext)
         AgencyNotificationHelper.showNotification(
             context = applicationContext,
-            title = if (senderName.startsWith("New Lead") || senderName.startsWith("New Inquiry")) {
-                senderName
-            } else {
-                "New Lead: $senderName"
-            },
+            title = finalTitle,
             message = messageText,
-            senderId = senderId
+            senderId = senderId,
+            isNewLead = isExplicitNewLead
         )
     }
 }

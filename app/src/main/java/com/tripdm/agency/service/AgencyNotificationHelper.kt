@@ -46,6 +46,7 @@ object AgencyNotificationHelper {
         title: String,
         message: String,
         senderId: String? = null,
+        isNewLead: Boolean = false,
         customNotificationId: Int? = null
     ) {
         // 1. If the user is actively in a chat with this sender, suppress notification
@@ -88,11 +89,13 @@ object AgencyNotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val summary = if (isNewLead) "New Traveler Lead" else "Chat Message"
+
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)
             .setContentText(message)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message).setSummaryText("Traveler Lead"))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message).setSummaryText(summary))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
@@ -102,6 +105,6 @@ object AgencyNotificationHelper {
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(notificationId, builder.build())
-        Log.d(TAG, "Notification displayed successfully (id: $notificationId, sender: $senderId)")
+        Log.d(TAG, "Notification displayed successfully (id: $notificationId, sender: $senderId, isNewLead: $isNewLead)")
     }
 }

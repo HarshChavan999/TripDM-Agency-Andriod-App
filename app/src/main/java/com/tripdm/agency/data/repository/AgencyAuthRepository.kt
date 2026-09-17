@@ -230,13 +230,20 @@ class AgencyAuthRepository(
         }
 
         val creditsVal = try {
-            snapshot.getLong("credits")?.toInt()
-                ?: (snapshot.get("credits") as? Number)?.toInt()
-                ?: (snapshot.get("credits") as? String)?.toIntOrNull()
+            (snapshot.get("credits") as? Number)?.toInt()
+                ?: snapshot.getLong("credits")?.toInt()
+                ?: snapshot.getString("credits")?.toIntOrNull()
+                ?: (snapshot.get("creditBalance") as? Number)?.toInt()
                 ?: 100
         } catch (e: Exception) {
             100
         }
+
+        val planVal = snapshot.getString("plan")
+            ?: snapshot.getString("subscriptionPlan")
+            ?: snapshot.getString("currentPlan")
+            ?: snapshot.getString("agencyPlan")
+            ?: "Free"
 
         val createdAtVal = try {
             snapshot.getLong("createdAt")
@@ -293,6 +300,7 @@ class AgencyAuthRepository(
                 ?: snapshot.getString("avatarUrl")
                 ?: "",
             credits = creditsVal,
+            plan = planVal,
             role = if (role.isNotEmpty()) role else "agency",
             createdAt = createdAtVal
         )

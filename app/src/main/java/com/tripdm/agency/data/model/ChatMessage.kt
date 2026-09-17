@@ -7,11 +7,15 @@ data class ChatMessage(
     val content: String = "",
     val timestamp: Long = System.currentTimeMillis(),
     val status: ChatMessageStatus = ChatMessageStatus.SENT,
+    val isEdited: Boolean = false,
+    val reactions: Map<String, String> = emptyMap(),
     val listingId: String? = null,
     val listingTitle: String? = null,
     val senderName: String? = null,
     val replyToId: String? = null,
-    val replyToContent: String? = null
+    val replyToContent: String? = null,
+    val replyToSenderName: String? = null,
+    val senderAvatarUrl: String? = null
 )
 
 enum class ChatMessageStatus {
@@ -27,5 +31,7 @@ data class ChatConversation(
     val lastMessage: String,
     val lastMessageTimestamp: Long,
     val unreadCount: Int = 0,
-    val relatedListingTitle: String? = null
+    val relatedListingTitle: String? = null,
+    val avatarUrl: String = "",
+    val isOnline: Boolean = false
 )

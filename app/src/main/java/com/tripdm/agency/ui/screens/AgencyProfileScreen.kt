@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -17,12 +18,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tripdm.agency.data.model.AgencyProfile
+import com.tripdm.agency.data.model.CreditTransaction
 import com.tripdm.agency.ui.components.StatusBadge
 import com.tripdm.agency.ui.theme.*
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
 fun AgencyProfileScreen(
     profile: AgencyProfile,
+    transactions: List<CreditTransaction> = emptyList(),
     onViewCreditsClick: () -> Unit,
     onSignOut: () -> Unit
 ) {
@@ -86,47 +91,247 @@ fun AgencyProfileScreen(
             }
         }
 
-        // Quick Credits Card
+        // Quick Credits & Billing Overview Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Available Balance",
-                        fontSize = 12.sp,
-                        color = TextSecondary,
-                        fontFamily = InterFontFamily
-                    )
-                    Text(
-                        text = "${profile.credits} Credits",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = PrimaryOrange,
-                        fontFamily = PoppinsFontFamily
-                    )
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.CreditCard,
+                            contentDescription = null,
+                            tint = PrimaryOrange,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Billing & Subscription",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DeepNavy,
+                            fontFamily = PoppinsFontFamily
+                        )
+                    }
+                    Surface(
+                        color = PrimaryOrange.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = profile.plan.ifBlank { "Free" },
+                            color = PrimaryOrange,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
                 }
 
-                Button(
-                    onClick = onViewCreditsClick,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = DeepNavy)
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Recharge", fontSize = 12.sp, fontFamily = InterFontFamily)
+                    Column {
+                        Text(
+                            text = "Available Balance",
+                            fontSize = 12.sp,
+                            color = TextSecondary,
+                            fontFamily = InterFontFamily
+                        )
+                        Text(
+                            text = "${profile.credits} Credits",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryOrange,
+                            fontFamily = PoppinsFontFamily
+                        )
+                    }
+
+                    Button(
+                        onClick = onViewCreditsClick,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = DeepNavy)
+                    ) {
+                        Text("Recharge", fontSize = 12.sp, fontFamily = InterFontFamily)
+                    }
                 }
             }
         }
 
-        // Business Contact & Location
+        // Transaction History Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.ReceiptLong,
+                            contentDescription = null,
+                            tint = DeepNavy,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Transaction History",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DeepNavy,
+                            fontFamily = PoppinsFontFamily
+                        )
+                    }
+                    if (transactions.isNotEmpty()) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = CircleShape
+                        ) {
+                            Text(
+                                text = "${transactions.size}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                if (transactions.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.History,
+                                contentDescription = null,
+                                tint = TextHint,
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "No transactions recorded yet.",
+                                fontSize = 12.sp,
+                                color = TextSecondary,
+                                fontFamily = InterFontFamily
+                            )
+                        }
+                    }
+                } else {
+                    val displayTxs = transactions.take(5)
+                    displayTxs.forEachIndexed { index, tx ->
+                        val timeStr = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(tx.timestamp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .background(
+                                            if (tx.type == "purchase") PrimaryOrange.copy(alpha = 0.1f)
+                                            else MaterialTheme.colorScheme.surfaceVariant,
+                                            CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (tx.type == "purchase") Icons.Default.MonetizationOn else Icons.Default.Receipt,
+                                        contentDescription = null,
+                                        tint = if (tx.type == "purchase") PrimaryOrange else SlateGray,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = tx.description,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = DeepNavy,
+                                        fontFamily = InterFontFamily,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = timeStr,
+                                        fontSize = 10.sp,
+                                        color = TextSecondary,
+                                        fontFamily = InterFontFamily
+                                    )
+                                }
+                            }
+
+                            Text(
+                                text = if (tx.amount > 0) "₹${tx.amount.toInt()}" else "+${tx.credits} Cr",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryOrange,
+                                fontFamily = InterFontFamily
+                            )
+                        }
+
+                        if (index < displayTxs.size - 1) {
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                thickness = 0.5.dp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                TextButton(
+                    onClick = onViewCreditsClick,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Manage Plans & View All History",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontFamily = InterFontFamily
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
+        }
+
+        // Agency Details
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),

@@ -30,10 +30,13 @@ import java.util.Locale
 @Composable
 fun AgencyCreditsScreen(
     currentCredits: Int,
+    currentPlan: String = "Free",
+    creditPlans: List<CreditPlan> = SampleCreditPlans,
     transactions: List<CreditTransaction>,
     isPurchasing: Boolean,
     purchaseMessage: String?,
     onPurchasePlan: (CreditPlan) -> Unit,
+    onClearPurchaseMessage: (() -> Unit)? = null,
     onBack: () -> Unit
 ) {
     Scaffold(
@@ -79,6 +82,19 @@ fun AgencyCreditsScreen(
                             .padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Surface(
+                            color = PrimaryOrange.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "Current Plan: ${currentPlan.ifBlank { "Free" }}",
+                                color = PrimaryOrange,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
                         Icon(
                             imageVector = Icons.Default.MonetizationOn,
                             contentDescription = null,
@@ -113,19 +129,32 @@ fun AgencyCreditsScreen(
 
             if (!purchaseMessage.isNullOrBlank()) {
                 item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0xFFE8F5E9), RoundedCornerShape(12.dp))
-                            .padding(14.dp)
+                    Surface(
+                        color = Color(0xFFE8F5E9),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(
-                            text = purchaseMessage,
-                            color = M3Success,
-                            fontSize = 13.sp,
-                            fontFamily = InterFontFamily,
-                            fontWeight = FontWeight.Medium
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = purchaseMessage,
+                                color = M3Success,
+                                fontSize = 13.sp,
+                                fontFamily = InterFontFamily,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (onClearPurchaseMessage != null) {
+                                TextButton(onClick = onClearPurchaseMessage) {
+                                    Text("DISMISS", fontSize = 11.sp, color = M3Success)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -141,7 +170,7 @@ fun AgencyCreditsScreen(
             }
 
             // Plans
-            items(SampleCreditPlans) { plan ->
+            items(creditPlans) { plan ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()

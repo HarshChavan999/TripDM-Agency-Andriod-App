@@ -49,6 +49,9 @@ class AgencyChatViewModel(
         agencyId: String,
         agencyName: String,
         content: String,
+        replyToId: String? = null,
+        replyToContent: String? = null,
+        replyToSenderName: String? = null,
         onSent: () -> Unit = {}
     ) {
         val target = _activeConversation.value?.otherUserId ?: return
@@ -56,9 +59,36 @@ class AgencyChatViewModel(
         if (content.isBlank()) return
 
         viewModelScope.launch {
-            repository.sendMessage(agencyId, agencyName, target, content, listingTitle).onSuccess {
+            repository.sendMessage(
+                agencyId = agencyId,
+                agencyName = agencyName,
+                targetUserId = target,
+                content = content,
+                listingTitle = listingTitle,
+                replyToId = replyToId,
+                replyToContent = replyToContent,
+                replyToSenderName = replyToSenderName
+            ).onSuccess {
                 onSent()
             }
+        }
+    }
+
+    fun deleteMessage(messageId: String) {
+        viewModelScope.launch {
+            repository.deleteMessage(messageId)
+        }
+    }
+
+    fun editMessage(messageId: String, newContent: String) {
+        viewModelScope.launch {
+            repository.editMessage(messageId, newContent)
+        }
+    }
+
+    fun reactToMessage(messageId: String, agencyId: String, emoji: String) {
+        viewModelScope.launch {
+            repository.reactToMessage(messageId, agencyId, emoji)
         }
     }
 }

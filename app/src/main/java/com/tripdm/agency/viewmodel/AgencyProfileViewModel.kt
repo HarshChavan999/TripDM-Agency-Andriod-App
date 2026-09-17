@@ -18,11 +18,22 @@ class AgencyProfileViewModel(
     private val _transactions = MutableStateFlow<List<CreditTransaction>>(emptyList())
     val transactions: StateFlow<List<CreditTransaction>> = _transactions.asStateFlow()
 
+    private val _creditPlans = MutableStateFlow<List<CreditPlan>>(com.tripdm.agency.data.model.SampleCreditPlans)
+    val creditPlans: StateFlow<List<CreditPlan>> = _creditPlans.asStateFlow()
+
     private val _isPurchasing = MutableStateFlow(false)
     val isPurchasing: StateFlow<Boolean> = _isPurchasing.asStateFlow()
 
     private val _purchaseSuccess = MutableStateFlow<String?>(null)
     val purchaseSuccess: StateFlow<String?> = _purchaseSuccess.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            creditsRepository.observeCreditPlans().collect { plans ->
+                _creditPlans.value = plans
+            }
+        }
+    }
 
     fun loadTransactions(agencyId: String) {
         viewModelScope.launch {

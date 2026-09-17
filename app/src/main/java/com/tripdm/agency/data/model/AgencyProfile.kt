@@ -18,6 +18,7 @@ data class AgencyProfile(
     val approvalStatus: String = "pending", // "pending", "approved", "rejected"
     val logoUrl: String = "",
     val credits: Int = 100,
+    val plan: String = "Free",
     val role: String = "agency",
     val createdAt: Long = System.currentTimeMillis()
 )

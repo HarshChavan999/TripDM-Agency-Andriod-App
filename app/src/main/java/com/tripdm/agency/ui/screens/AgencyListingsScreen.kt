@@ -8,12 +8,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -88,13 +90,49 @@ fun AgencyListingsScreen(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = onSearchChange,
-                        placeholder = { Text("Search packages by title or location...") },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = {
+                            Text(
+                                text = "Search packages by title or location...",
+                                color = TextSecondary.copy(alpha = 0.7f),
+                                fontSize = 14.sp,
+                                fontFamily = InterFontFamily
+                            )
+                        },
                         leadingIcon = {
-                            Icon(Icons.Default.Search, contentDescription = "Search", tint = TextSecondary)
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search",
+                                tint = TextSecondary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { onSearchChange("") }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Clear Search",
+                                        tint = TextSecondary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
                         },
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = LightGray.copy(alpha = 0.6f),
+                            unfocusedContainerColor = LightGray.copy(alpha = 0.6f),
+                            focusedBorderColor = PrimaryOrange,
+                            unfocusedBorderColor = Color.Transparent,
+                            cursorColor = PrimaryOrange
+                        ),
+                        shape = RoundedCornerShape(24.dp),
+                        textStyle = TextStyle(
+                            fontSize = 14.sp,
+                            fontFamily = InterFontFamily,
+                            color = DeepNavy
+                        )
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))

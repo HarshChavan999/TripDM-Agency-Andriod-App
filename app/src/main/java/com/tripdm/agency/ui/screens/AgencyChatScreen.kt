@@ -1,5 +1,11 @@
 package com.tripdm.agency.ui.screens
 
+import android.content.Context
+import android.media.MediaPlayer
+import android.net.ConnectivityManager
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -7,152 +13,707 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.tripdm.agency.R
 import com.tripdm.agency.data.model.ChatConversation
 import com.tripdm.agency.data.model.ChatMessage
+import com.tripdm.agency.data.model.ChatMessageStatus
 import com.tripdm.agency.ui.components.AgencyMessageBubble
-import com.tripdm.agency.ui.theme.*
+import com.tripdm.agency.ui.components.AgencyMessageInput
+import com.tripdm.agency.ui.components.DateSeparator
+import com.tripdm.agency.ui.components.formatDateSeparator
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+private fun playChatSound(context: Context, isSent: Boolean) {
+    try {
+        val soundRes = if (isSent) R.raw.sendsound else R.raw.getsound
+        val mediaPlayer = MediaPlayer.create(context.applicationContext, soundRes)
+        mediaPlayer?.setOnCompletionListener { mp ->
+            try {
+                mp.release()
+            } catch (t: Throwable) {
+                android.util.Log.e("AgencyChatScreen", "Error releasing media player", t)
+            }
+        }
+        mediaPlayer?.start()
+    } catch (t: Throwable) {
+        android.util.Log.e("AgencyChatScreen", "Error playing chat sound", t)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun AgencyChatScreen(
     currentAgencyId: String,
+    currentAgencyName: String = "",
     conversation: ChatConversation,
     messages: List<ChatMessage>,
-    onSendMessage: (String) -> Unit,
-    onBack: () -> Unit
+    isLoadingHistory: Boolean = false,
+    hasMoreHistory: Boolean = false,
+    historyError: String? = null,
+    onSendMessage: (content: String, replyToId: String?, replyToContent: String?, replyToSenderName: String?) -> Unit,
+    onBack: () -> Unit,
+    onLoadMoreHistory: (() -> Unit)? = null,
+    onClearHistoryError: (() -> Unit)? = null,
+    onDeleteMessage: ((String) -> Unit)? = null,
+    onEditMessage: ((String, String) -> Unit)? = null,
+    onReactToMessage: ((String, String) -> Unit)? = null,
+    isPartnerTyping: Boolean = false,
+    onTyping: () -> Unit = {},
+    onEnterChat: () -> Unit = {},
+    onLeaveChat: () -> Unit = {}
 ) {
-    var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
+    DisposableEffect(conversation.otherUserId) {
+        onEnterChat()
+        onDispose { onLeaveChat() }
+    }
+
+    // Play chat sounds on new messages
+    var isHistoryLoaded by remember { mutableStateOf(false) }
+    var lastMessageId by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(messages, isLoadingHistory) {
+        if (isLoadingHistory) return@LaunchedEffect
+
+        val latest = messages.lastOrNull()
+        if (latest != null) {
+            if (isHistoryLoaded && latest.id != lastMessageId) {
+                val isFromMe = latest.from == currentAgencyId
+                playChatSound(context, isSent = isFromMe)
+            }
+            lastMessageId = latest.id
+            isHistoryLoaded = true
+        } else {
+            isHistoryLoaded = true
         }
     }
 
+    // Connection state monitoring
+    var isOnline by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        connectivityManager?.let { cm ->
+            cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) {
+                    isOnline = true
+                }
+
+                override fun onLost(network: android.net.Network) {
+                    isOnline = false
+                }
+            })
+        }
+    }
+
+    // Group messages by date for separators
+    val messagesWithDates = remember(messages) {
+        val result = mutableListOf<Pair<Any?, ChatMessage>>()
+        var lastDateHeader: String? = null
+        val uniqueMessages = messages.distinctBy { it.id }
+        for (msg in uniqueMessages) {
+            val dateHeader = formatDateSeparator(msg.timestamp)
+            if (dateHeader != lastDateHeader) {
+                result.add(Pair(null, msg))
+                lastDateHeader = dateHeader
+            }
+            result.add(Pair(msg, msg))
+        }
+        result
+    }
+
+    // Scroll state management
+    var hasScrolledToInitial by remember(conversation.otherUserId) { mutableStateOf(false) }
+    var lastScrolledMessageId by remember(conversation.otherUserId) { mutableStateOf<String?>(null) }
+    val messagesWithDatesReversed = remember(messagesWithDates) {
+        messagesWithDates.reversed()
+    }
+
+    LaunchedEffect(messages) {
+        if (messages.isEmpty() || hasScrolledToInitial) return@LaunchedEffect
+
+        val firstUnreadIndex = messagesWithDates.indexOfFirst { (type, message) ->
+            type != null && message.from != currentAgencyId && message.status != ChatMessageStatus.READ
+        }
+        if (firstUnreadIndex != -1) {
+            val reversedIndex = messagesWithDates.size - 1 - firstUnreadIndex
+            listState.scrollToItem(reversedIndex)
+        } else {
+            listState.scrollToItem(0)
+        }
+        hasScrolledToInitial = true
+        lastScrolledMessageId = messages.lastOrNull()?.id
+    }
+
+    LaunchedEffect(messages) {
+        if (messages.isEmpty()) return@LaunchedEffect
+        val latestMessageId = messages.lastOrNull()?.id
+        if (hasScrolledToInitial && latestMessageId != lastScrolledMessageId) {
+            if (listState.firstVisibleItemIndex < 3) {
+                listState.animateScrollToItem(0)
+            }
+            lastScrolledMessageId = latestMessageId
+        }
+    }
+
+    val animatedMessageIds = remember { mutableStateListOf<String>() }
+    var editingMessage by remember { mutableStateOf<ChatMessage?>(null) }
+    var replyingMessage by remember { mutableStateOf<ChatMessage?>(null) }
+
+    // Search state
+    var isSearchActive by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val searchFocusRequester = remember { FocusRequester() }
+
+    val displayedMessages = remember(messages, isSearchActive, searchQuery) {
+        if (!isSearchActive || searchQuery.isBlank()) messages
+        else messages.filter { it.content.contains(searchQuery, ignoreCase = true) }
+    }
+
+    LaunchedEffect(displayedMessages, isSearchActive) {
+        if (isSearchActive && searchQuery.isNotBlank() && displayedMessages.isNotEmpty()) {
+            listState.animateScrollToItem(displayedMessages.size - 1)
+        }
+    }
+
+    LaunchedEffect(isSearchActive) {
+        if (isSearchActive) {
+            kotlinx.coroutines.delay(50)
+            searchFocusRequester.requestFocus()
+        }
+    }
+
+    val searchMessagesWithDates = remember(displayedMessages) {
+        val result = mutableListOf<Pair<Any?, ChatMessage>>()
+        var lastDateHeader: String? = null
+        val uniqueMessages = displayedMessages.distinctBy { it.id }
+        for (msg in uniqueMessages) {
+            val dateHeader = formatDateSeparator(msg.timestamp)
+            if (dateHeader != lastDateHeader) {
+                result.add(Pair(null, msg))
+                lastDateHeader = dateHeader
+            }
+            result.add(Pair(msg, msg))
+        }
+        result
+    }
+    val displayedWithDatesReversed = remember(searchMessagesWithDates) {
+        searchMessagesWithDates.reversed()
+    }
+
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = conversation.otherUserName,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = DeepNavy,
-                            fontFamily = PoppinsFontFamily
-                        )
-                        if (!conversation.relatedListingTitle.isNullOrBlank()) {
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 1.dp
+            ) {
+                Column(
+                    modifier = Modifier.statusBarsPadding()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = {
+                            if (isSearchActive) {
+                                isSearchActive = false
+                                searchQuery = ""
+                            } else {
+                                onBack()
+                            }
+                        }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = if (isSearchActive) "Close Search" else "Back",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        AnimatedContent(
+                            targetState = isSearchActive,
+                            transitionSpec = {
+                                fadeIn(tween(200)) + slideInHorizontally { it / 3 } togetherWith
+                                fadeOut(tween(150)) + slideOutHorizontally { -it / 3 }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) { searchMode ->
+                            if (searchMode) {
+                                BasicTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    singleLine = true,
+                                    textStyle = LocalTextStyle.current.copy(
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontSize = 15.sp
+                                    ),
+                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .focusRequester(searchFocusRequester),
+                                    decorationBox = { inner ->
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(
+                                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                                    RoundedCornerShape(20.dp)
+                                                )
+                                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                                        ) {
+                                            if (searchQuery.isEmpty()) {
+                                                Text(
+                                                    "Search messages…",
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                    fontSize = 15.sp
+                                                )
+                                            }
+                                            inner()
+                                        }
+                                    }
+                                )
+                            } else {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    val avatarUrl = conversation.avatarUrl
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.primaryContainer),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (avatarUrl.isNotEmpty()) {
+                                            AsyncImage(
+                                                model = avatarUrl,
+                                                contentDescription = "Profile",
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .clip(CircleShape),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        } else {
+                                             val initialText = if (conversation.otherUserName.startsWith("Lead #")) {
+                                                 "#" + conversation.otherUserName.removePrefix("Lead #")
+                                             } else {
+                                                 conversation.otherUserName.take(1).uppercase()
+                                             }
+                                             Text(
+                                                 text = initialText,
+                                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                 fontSize = if (initialText.length > 2) 11.sp else 14.sp,
+                                                 fontWeight = FontWeight.Bold
+                                             )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            text = conversation.otherUserName,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        if (!conversation.relatedListingTitle.isNullOrBlank()) {
+                                            Text(
+                                                text = "Package: ${conversation.relatedListingTitle}",
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (isSearchActive && searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear Search",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        } else if (!isSearchActive) {
+                            IconButton(onClick = { isSearchActive = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Search",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            IconButton(onClick = { /* menu */ }) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "More options",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
+
+                        if (isSearchActive && searchQuery.isNotBlank()) {
                             Text(
-                                text = "Package: ${conversation.relatedListingTitle}",
-                                fontSize = 11.sp,
-                                color = PrimaryOrange,
-                                fontFamily = InterFontFamily
+                                text = "${displayedMessages.size}",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(end = 8.dp)
                             )
                         }
                     }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = DeepNavy)
+                }
+            }
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = paddingValues.calculateTopPadding())
+                .imePadding()
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = listState,
+                    reverseLayout = true,
+                    contentPadding = PaddingValues(
+                        start = 12.dp,
+                        end = 12.dp,
+                        top = 8.dp,
+                        bottom = 8.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
+                ) {
+                    items(
+                        items = if (isSearchActive && searchQuery.isNotBlank()) displayedWithDatesReversed else messagesWithDatesReversed,
+                        key = { (first, second) ->
+                            if (first == null) "date_${second.id}" else second.id
+                        }
+                    ) { (type, message) ->
+                        if (type == null) {
+                            val dateText = formatDateSeparator(message.timestamp)
+                            DateSeparator(dateText = dateText)
+                        } else {
+                            val isFromMe = message.from == currentAgencyId
+                            val messageId = message.id
+
+                            var visible by remember(messageId) { mutableStateOf(animatedMessageIds.contains(messageId)) }
+                            if (!visible) {
+                                LaunchedEffect(messageId) {
+                                    visible = true
+                                    animatedMessageIds.add(messageId)
+                                }
+                            }
+
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = visible,
+                                enter = fadeIn(animationSpec = tween(150)) +
+                                        slideInVertically(
+                                            initialOffsetY = { it / 4 },
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                                stiffness = Spring.StiffnessMediumLow
+                                            )
+                                        ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .animateItem()
+                            ) {
+                                AgencyMessageBubble(
+                                    message = message,
+                                    isFromCurrentUser = isFromMe,
+                                    showAvatar = !isFromMe,
+                                    chatUserName = conversation.otherUserName,
+                                    chatUserAvatarUrl = conversation.avatarUrl,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onDeleteMessage = { onDeleteMessage?.invoke(message.id) },
+                                    onEditMessage = {
+                                        replyingMessage = null
+                                        editingMessage = message
+                                    },
+                                    onReactToMessage = { emoji -> onReactToMessage?.invoke(message.id, emoji) },
+                                    onReplyToMessage = {
+                                        editingMessage = null
+                                        replyingMessage = message
+                                    },
+                                    onQuoteClick = {
+                                        val idx = messages.reversed().indexOfFirst { it.id == message.replyToId }
+                                        if (idx >= 0) {
+                                            coroutineScope.launch { listState.animateScrollToItem(idx) }
+                                        }
+                                    },
+                                    currentUserId = currentAgencyId,
+                                    searchQuery = if (isSearchActive) searchQuery else ""
+                                )
+                            }
+                        }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-            )
-        },
-        bottomBar = {
-            Surface(
-                color = Color.White,
-                shadowElevation = 4.dp
+
+                    if (isLoadingHistory) {
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Loading history...",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    if (hasMoreHistory && !isLoadingHistory) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                TextButton(
+                                    onClick = { onLoadMoreHistory?.invoke() }
+                                ) {
+                                    Text(
+                                        "Load Older Messages",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (messages.isEmpty() && !isLoadingHistory) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 80.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                        shape = CircleShape,
+                                        modifier = Modifier.size(64.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                text = "🔒",
+                                                fontSize = 28.sp
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = "Messages are end-to-end encrypted.",
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                     Text(
+                                         text = "No messages yet. Say hello to ${conversation.otherUserName}!",
+                                         fontSize = 14.sp,
+                                         color = MaterialTheme.colorScheme.onSurface,
+                                         fontWeight = FontWeight.Medium
+                                     )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!isOnline) {
+                Surface(
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "📡 No internet connection",
+                            color = MaterialTheme.colorScheme.onError,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            historyError?.let { error ->
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "⚠️ $error",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            fontSize = 12.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(
+                            onClick = { onClearHistoryError?.invoke() }
+                        ) {
+                            Text(
+                                text = "DISMISS",
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = isPartnerTyping,
+                enter = fadeIn(tween(200)) + expandVertically(),
+                exit = fadeOut(tween(150)) + shrinkVertically()
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                        .padding(start = 16.dp, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedTextField(
-                        value = inputText,
-                        onValueChange = { inputText = it },
-                        placeholder = { Text("Type your message...", fontSize = 14.sp) },
-                        shape = RoundedCornerShape(24.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(end = 8.dp),
-                        maxLines = 4
-                    )
-
-                    IconButton(
-                        onClick = {
-                            val text = inputText.trim()
-                            if (text.isNotEmpty()) {
-                                onSendMessage(text)
-                                inputText = ""
-                                coroutineScope.launch {
-                                    if (messages.isNotEmpty()) {
-                                        listState.animateScrollToItem(messages.size - 1)
-                                    }
-                                }
-                            }
-                        },
-                        modifier = Modifier
-                            .size(44.dp)
-                            .background(PrimaryOrange, CircleShape)
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(12.dp, 12.dp, 12.dp, 4.dp),
+                        shadowElevation = 1.dp
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Send",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val dotAlphas = (0..2).map { i ->
+                                val transition = rememberInfiniteTransition(label = "dot$i")
+                                transition.animateFloat(
+                                    initialValue = 0.3f,
+                                    targetValue = 1f,
+                                    animationSpec = infiniteRepeatable(
+                                        animation = keyframes {
+                                            durationMillis = 1200
+                                            0.3f at 0
+                                            1f at 300 + i * 150
+                                            0.3f at 600 + i * 150
+                                        },
+                                        repeatMode = RepeatMode.Restart
+                                    ),
+                                    label = "dotAlpha$i"
+                                ).value
+                            }
+                            dotAlphas.forEach { alpha ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = alpha)
+                                        )
+                                )
+                            }
+                        }
                     }
-                }
-            }
-        }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(LightGray)
-                .padding(padding)
-        ) {
-            if (messages.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "No messages yet. Say hello to the traveler!",
-                        fontSize = 13.sp,
-                        color = TextSecondary,
-                        fontFamily = InterFontFamily
+                        text = "${conversation.otherUserName} is typing…",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 }
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(vertical = 8.dp)
-                ) {
-                    items(messages, key = { it.id }) { msg ->
-                        AgencyMessageBubble(
-                            message = msg,
-                            isFromMe = msg.from == currentAgencyId
-                        )
-                    }
-                }
             }
+
+            AgencyMessageInput(
+                onSendMessage = { content ->
+                    onSendMessage(
+                        content,
+                        replyingMessage?.id,
+                        replyingMessage?.content,
+                        if (replyingMessage?.from == currentAgencyId) currentAgencyName
+                        else conversation.otherUserName
+                    )
+                    replyingMessage = null
+                    coroutineScope.launch { listState.animateScrollToItem(0) }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                editingMessage = editingMessage,
+                onEditMessage = { newContent ->
+                    editingMessage?.let { msg ->
+                        onEditMessage?.invoke(msg.id, newContent)
+                    }
+                    editingMessage = null
+                },
+                onCancelEdit = { editingMessage = null },
+                replyingMessage = replyingMessage,
+                replyingMessageSenderName = if (replyingMessage?.from == currentAgencyId) currentAgencyName
+                                            else conversation.otherUserName,
+                onCancelReply = { replyingMessage = null },
+                onTyping = onTyping
+            )
         }
     }
 }
