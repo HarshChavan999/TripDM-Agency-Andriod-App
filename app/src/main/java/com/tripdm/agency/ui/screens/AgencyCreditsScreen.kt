@@ -9,7 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.CurrencyRupee
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -63,9 +63,9 @@ fun AgencyCreditsScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(LightGray)
+                .background(Color.White)
                 .padding(padding)
-                .padding(16.dp),
+                .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Balance Card
@@ -96,7 +96,7 @@ fun AgencyCreditsScreen(
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         Icon(
-                            imageVector = Icons.Default.MonetizationOn,
+                            imageVector = Icons.Default.CurrencyRupee,
                             contentDescription = null,
                             tint = PrimaryOrange,
                             modifier = Modifier.size(40.dp)
@@ -169,121 +169,117 @@ fun AgencyCreditsScreen(
                 )
             }
 
-            // Plans
+            // Plans — Flat row design with plain divider line separation
             items(creditPlans) { plan ->
-                Card(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .then(
-                            if (plan.isPopular) {
-                                Modifier.border(2.dp, PrimaryOrange, RoundedCornerShape(16.dp))
-                            } else Modifier
-                        ),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        .padding(vertical = 4.dp)
                 ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = plan.name,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = DeepNavy,
-                                    fontFamily = PoppinsFontFamily
-                                )
-                                Text(
-                                    text = plan.description,
-                                    fontSize = 12.sp,
-                                    color = TextSecondary,
-                                    fontFamily = InterFontFamily
-                                )
-                            }
-                            if (plan.isPopular) {
-                                Box(
-                                    modifier = Modifier
-                                        .background(PrimaryOrange, RoundedCornerShape(12.dp))
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                                ) {
-                                    Text(
-                                        text = "POPULAR",
-                                        color = Color.White,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        Row(verticalAlignment = Alignment.Bottom) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "₹${plan.price.toInt()}",
-                                fontSize = 24.sp,
+                                text = plan.name,
+                                fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = DeepNavy,
                                 fontFamily = PoppinsFontFamily
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "for +${plan.credits} Credits",
-                                fontSize = 13.sp,
-                                color = PrimaryOrange,
-                                fontWeight = FontWeight.SemiBold,
+                                text = plan.description,
+                                fontSize = 12.sp,
+                                color = TextSecondary,
                                 fontFamily = InterFontFamily
                             )
                         }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        plan.features.forEach { feat ->
-                            Row(
-                                modifier = Modifier.padding(vertical = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                        if (plan.isPopular) {
+                            Box(
+                                modifier = Modifier
+                                    .background(PrimaryOrange, RoundedCornerShape(12.dp))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    tint = M3Success,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = feat,
-                                    fontSize = 12.sp,
-                                    color = SlateGray,
-                                    fontFamily = InterFontFamily
+                                    text = "POPULAR",
+                                    color = Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }
+                    }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                        Button(
-                            onClick = { onPurchasePlan(plan) },
-                            enabled = !isPurchasing,
-                            modifier = Modifier.fillMaxWidth().height(46.dp),
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = if (plan.isPopular) PrimaryOrange else DeepNavy)
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = "₹${plan.price.toInt()}",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DeepNavy,
+                            fontFamily = PoppinsFontFamily
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "for +${plan.credits} Credits",
+                            fontSize = 13.sp,
+                            color = PrimaryOrange,
+                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = InterFontFamily
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    plan.features.forEach { feat ->
+                        Row(
+                            modifier = Modifier.padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = M3Success,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Recharge ${plan.name}",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                text = feat,
+                                fontSize = 12.sp,
+                                color = SlateGray,
                                 fontFamily = InterFontFamily
                             )
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Button(
+                        onClick = { onPurchasePlan(plan) },
+                        enabled = !isPurchasing,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = if (plan.isPopular) PrimaryOrange else DeepNavy)
+                    ) {
+                        Text(
+                            text = "Recharge ${plan.name}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = InterFontFamily
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+                    HorizontalDivider(color = Color(0x1F000000), thickness = 0.5.dp)
                 }
             }
 
-            // Payment History / Transactions
+            // Payment History / Transactions — Plain lines separation
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -297,31 +293,27 @@ fun AgencyCreditsScreen(
 
             if (transactions.isEmpty()) {
                 item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                    Box(
+                        modifier = Modifier
+                            .padding(vertical = 12.dp)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Box(modifier = Modifier.padding(20.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            Text("No transaction records found.", fontSize = 12.sp, color = TextSecondary)
-                        }
+                        Text("No transaction records found.", fontSize = 12.sp, color = TextSecondary)
                     }
                 }
             } else {
                 items(transactions) { tx ->
                     val timeStr = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(tx.timestamp))
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                    ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(14.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = tx.description,
                                     fontSize = 13.sp,
@@ -329,7 +321,7 @@ fun AgencyCreditsScreen(
                                     color = DeepNavy,
                                     fontFamily = InterFontFamily
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     text = timeStr,
                                     fontSize = 11.sp,
@@ -345,6 +337,7 @@ fun AgencyCreditsScreen(
                                 fontFamily = InterFontFamily
                             )
                         }
+                        HorizontalDivider(color = Color(0x10000000), thickness = 0.5.dp)
                     }
                 }
             }

@@ -2,6 +2,7 @@ package com.tripdm.agency.ui.components
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -19,10 +20,12 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.outlined.SentimentSatisfiedAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -80,13 +83,15 @@ fun AgencyMessageInput(
     }
 
     Surface(
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
+        color = Color(0xFFFAF6F0),
+        tonalElevation = 0.dp,
         modifier = modifier
     ) {
         Column(
             modifier = Modifier.navigationBarsPadding()
         ) {
+            HorizontalDivider(color = Color(0x1F000000), thickness = 0.5.dp)
+
             // Quick Replies row - shown when text field is empty (standard chat UX)
             if (quickReplies.isNotEmpty() && messageText.isBlank() && editingMessage == null) {
                 Row(
@@ -103,8 +108,10 @@ fun AgencyMessageInput(
                                 onSendMessage(reply)
                             },
                             shape = RoundedCornerShape(18.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = Color(0xFFFFFFFF),
+                            contentColor = Color(0xFF374151),
+                            border = BorderStroke(0.5.dp, Color(0x20000000)),
+                            shadowElevation = 0.5.dp
                         ) {
                             Text(
                                 text = reply,
@@ -123,7 +130,7 @@ fun AgencyMessageInput(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f))
+                        .background(Color(0xFFE2F7D8))
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -144,7 +151,7 @@ fun AgencyMessageInput(
                         Text(
                             text = replyingMessage.content,
                             fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = Color(0xFF4B5563),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -157,7 +164,7 @@ fun AgencyMessageInput(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Cancel Reply",
                             modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = Color(0xFF4B5563)
                         )
                     }
                 }
@@ -168,14 +175,14 @@ fun AgencyMessageInput(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f))
+                        .background(Color(0xFFFEF3C7))
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = "Editing Message",
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = Color(0xFFD97706),
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -184,12 +191,12 @@ fun AgencyMessageInput(
                             text = "Editing message",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = Color(0xFFD97706)
                         )
                         Text(
                             text = editingMessage.content,
                             fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = Color(0xFF4B5563),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -202,7 +209,7 @@ fun AgencyMessageInput(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Cancel Edit",
                             modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = Color(0xFF4B5563)
                         )
                     }
                 }
@@ -211,24 +218,38 @@ fun AgencyMessageInput(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Clean input container
+                IconButton(
+                    onClick = { /* emoji picker */ },
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.SentimentSatisfiedAlt,
+                        contentDescription = "Emoji",
+                        tint = Color(0xFF64748B),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                // Clean input container pill
                 Row(
                     modifier = Modifier
                         .weight(1f)
-                        .heightIn(min = 40.dp)
+                        .heightIn(min = 42.dp)
                         .background(
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            shape = RoundedCornerShape(20.dp)
+                            color = Color(0xFFFFFFFF),
+                            shape = RoundedCornerShape(24.dp)
                         )
                         .border(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            shape = RoundedCornerShape(20.dp)
+                            width = 0.5.dp,
+                            color = Color(0x28000000),
+                            shape = RoundedCornerShape(24.dp)
                         )
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
@@ -239,9 +260,9 @@ fun AgencyMessageInput(
                     ) {
                         if (messageText.isEmpty()) {
                             Text(
-                                text = "Message",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                fontSize = 13.sp
+                                text = "Type a message...",
+                                color = Color(0xFF94A3B8),
+                                fontSize = 14.sp
                             )
                         }
                         BasicTextField(
@@ -253,8 +274,8 @@ fun AgencyMessageInput(
                             modifier = Modifier.fillMaxWidth(),
                             enabled = !isSending,
                             textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontSize = 13.sp
+                                color = Color(0xFF111827),
+                                fontSize = 14.sp
                             ),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                             keyboardActions = KeyboardActions(
@@ -271,7 +292,7 @@ fun AgencyMessageInput(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Morphing primary button (voice, edit check, or send) with spring scaling transition
+                // Morphing send button
                 AnimatedContent(
                     targetState = (messageText.isNotBlank() || editingMessage != null),
                     transitionSpec = {
@@ -290,14 +311,18 @@ fun AgencyMessageInput(
                         },
                         enabled = !isSending,
                         modifier = Modifier
-                            .size(40.dp)
-                            .background(MaterialTheme.colorScheme.primary, CircleShape)
+                            .size(42.dp)
+                            .background(
+                                if (hasTextOrEditing) MaterialTheme.colorScheme.primary
+                                else Color(0xFF475569),
+                                CircleShape
+                            )
                     ) {
                         if (isSending) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(18.dp),
                                 strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimary
+                                color = Color.White
                             )
                         } else {
                             Icon(
@@ -307,8 +332,8 @@ fun AgencyMessageInput(
                                 contentDescription = if (editingMessage != null) "Save changes"
                                                      else if (hasTextOrEditing) "Send"
                                                      else "Record voice message",
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(18.dp)
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }

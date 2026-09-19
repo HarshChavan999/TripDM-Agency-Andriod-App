@@ -7,6 +7,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -42,6 +43,7 @@ import com.tripdm.agency.data.model.ChatMessageStatus
 import com.tripdm.agency.ui.components.AgencyMessageBubble
 import com.tripdm.agency.ui.components.AgencyMessageInput
 import com.tripdm.agency.ui.components.DateSeparator
+import com.tripdm.agency.ui.components.chatTravelBackground
 import com.tripdm.agency.ui.components.formatDateSeparator
 import kotlinx.coroutines.launch
 
@@ -230,8 +232,8 @@ fun AgencyChatScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             Surface(
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 1.dp
+                color = Color(0xFFFAF6F0),
+                tonalElevation = 0.dp
             ) {
                 Column(
                     modifier = Modifier.statusBarsPadding()
@@ -254,7 +256,7 @@ fun AgencyChatScreen(
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = if (isSearchActive) "Close Search" else "Back",
-                                tint = MaterialTheme.colorScheme.onSurface
+                                tint = Color(0xFF111827)
                             )
                         }
 
@@ -272,7 +274,7 @@ fun AgencyChatScreen(
                                     onValueChange = { searchQuery = it },
                                     singleLine = true,
                                     textStyle = LocalTextStyle.current.copy(
-                                        color = MaterialTheme.colorScheme.onSurface,
+                                        color = Color(0xFF111827),
                                         fontSize = 15.sp
                                     ),
                                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -284,7 +286,12 @@ fun AgencyChatScreen(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .background(
-                                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                                    Color(0xFFFFFFFF),
+                                                    RoundedCornerShape(20.dp)
+                                                )
+                                                .border(
+                                                    0.5.dp,
+                                                    Color(0x20000000),
                                                     RoundedCornerShape(20.dp)
                                                 )
                                                 .padding(horizontal = 16.dp, vertical = 10.dp)
@@ -292,7 +299,7 @@ fun AgencyChatScreen(
                                             if (searchQuery.isEmpty()) {
                                                 Text(
                                                     "Search messages…",
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                    color = Color(0xFF94A3B8),
                                                     fontSize = 15.sp
                                                 )
                                             }
@@ -308,9 +315,9 @@ fun AgencyChatScreen(
                                     val avatarUrl = conversation.avatarUrl
                                     Box(
                                         modifier = Modifier
-                                            .size(36.dp)
+                                            .size(40.dp)
                                             .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primaryContainer),
+                                            .background(Color(0xFFFFEDD5)),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         if (avatarUrl.isNotEmpty()) {
@@ -326,35 +333,55 @@ fun AgencyChatScreen(
                                              val initialText = if (conversation.otherUserName.startsWith("Lead #")) {
                                                  "#" + conversation.otherUserName.removePrefix("Lead #")
                                              } else {
-                                                 conversation.otherUserName.take(1).uppercase()
+                                                 conversation.otherUserName.ifEmpty { "T" }.take(2).uppercase()
                                              }
                                              Text(
                                                  text = initialText,
-                                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                 color = Color(0xFF92400E),
                                                  fontSize = if (initialText.length > 2) 11.sp else 14.sp,
                                                  fontWeight = FontWeight.Bold
                                              )
                                         }
                                     }
-                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Spacer(modifier = Modifier.width(10.dp))
                                     Column {
                                         Text(
                                             text = conversation.otherUserName,
-                                            color = MaterialTheme.colorScheme.onSurface,
+                                            color = Color(0xFF111827),
                                             fontSize = 16.sp,
-                                            fontWeight = FontWeight.SemiBold,
+                                            fontWeight = FontWeight.Bold,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
-                                        if (!conversation.relatedListingTitle.isNullOrBlank()) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            val shortId = conversation.otherUserId.take(8)
                                             Text(
-                                                text = "Package: ${conversation.relatedListingTitle}",
-                                                color = MaterialTheme.colorScheme.primary,
+                                                text = "Customer ID: $shortId",
+                                                color = Color(0xFF6B7280),
                                                 fontSize = 11.sp,
-                                                fontWeight = FontWeight.Medium,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
+                                            if (!conversation.relatedListingTitle.isNullOrBlank()) {
+                                                Surface(
+                                                    color = Color(0xFFFFF7ED),
+                                                    shape = RoundedCornerShape(10.dp),
+                                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFDBA74))
+                                                ) {
+                                                    Text(
+                                                        text = "⏱️ ${conversation.relatedListingTitle}",
+                                                        color = Color(0xFFC2410C),
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -366,7 +393,7 @@ fun AgencyChatScreen(
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = "Clear Search",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = Color(0xFF4B5563),
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -375,7 +402,7 @@ fun AgencyChatScreen(
                                 Icon(
                                     imageVector = Icons.Default.Search,
                                     contentDescription = "Search",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = Color(0xFF4B5563),
                                     modifier = Modifier.size(22.dp)
                                 )
                             }
@@ -383,7 +410,7 @@ fun AgencyChatScreen(
                                 Icon(
                                     imageVector = Icons.Default.MoreVert,
                                     contentDescription = "More options",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = Color(0xFF4B5563),
                                     modifier = Modifier.size(22.dp)
                                 )
                             }
@@ -413,7 +440,7 @@ fun AgencyChatScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background)
+                    .chatTravelBackground()
             ) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -438,26 +465,7 @@ fun AgencyChatScreen(
                             DateSeparator(dateText = dateText)
                         } else {
                             val isFromMe = message.from == currentAgencyId
-                            val messageId = message.id
-
-                            var visible by remember(messageId) { mutableStateOf(animatedMessageIds.contains(messageId)) }
-                            if (!visible) {
-                                LaunchedEffect(messageId) {
-                                    visible = true
-                                    animatedMessageIds.add(messageId)
-                                }
-                            }
-
-                            androidx.compose.animation.AnimatedVisibility(
-                                visible = visible,
-                                enter = fadeIn(animationSpec = tween(150)) +
-                                        slideInVertically(
-                                            initialOffsetY = { it / 4 },
-                                            animationSpec = spring(
-                                                dampingRatio = Spring.DampingRatioLowBouncy,
-                                                stiffness = Spring.StiffnessMediumLow
-                                            )
-                                        ),
+                            Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .animateItem()

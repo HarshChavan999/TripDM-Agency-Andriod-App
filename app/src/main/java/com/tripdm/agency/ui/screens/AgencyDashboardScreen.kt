@@ -1,14 +1,15 @@
 package com.tripdm.agency.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.CurrencyRupee
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
@@ -16,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -46,10 +48,21 @@ fun AgencyDashboardScreen(
     onViewCreditsClick: () -> Unit,
     onChatClick: (ChatConversation) -> Unit
 ) {
+    val todaysLeadsCount = remember(recentChats) {
+        val cal = Calendar.getInstance()
+        val todayYear = cal.get(Calendar.YEAR)
+        val todayDay = cal.get(Calendar.DAY_OF_YEAR)
+        recentChats.count { chat ->
+            val chatCal = Calendar.getInstance().apply { timeInMillis = chat.lastMessageTimestamp }
+            chatCal.get(Calendar.YEAR) == todayYear && chatCal.get(Calendar.DAY_OF_YEAR) == todayDay
+        }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(LightGray)
+            .statusBarsPadding()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -189,70 +202,73 @@ fun AgencyDashboardScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                        // Bottom Row: Credits Pill & Quick Action Buttons
+                        // Credits Pill — full width row
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = PrimaryOrange.copy(alpha = 0.22f),
+                            modifier = Modifier
+                                .wrapContentWidth()
+                                .clickable { onViewCreditsClick() }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CurrencyRupee,
+                                    contentDescription = "Credits",
+                                    tint = PrimaryOrange,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "${profile.credits} Credits",
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = InterFontFamily
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Action Buttons Row
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            // Credits Pill
-                            Surface(
-                                shape = RoundedCornerShape(20.dp),
-                                color = PrimaryOrange.copy(alpha = 0.25f),
-                                modifier = Modifier.clickable { onViewCreditsClick() }
+                            Button(
+                                onClick = onCreateListingClick,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(40.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.MonetizationOn,
-                                        contentDescription = "Credits",
-                                        tint = PrimaryOrange,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "${profile.credits} Credits",
-                                        color = Color.White,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = InterFontFamily
-                                    )
-                                }
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("New Package", fontSize = 13.sp, fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold)
                             }
 
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            FilledTonalButton(
+                                onClick = onViewCreditsClick,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = Color.White.copy(alpha = 0.18f),
+                                    contentColor = Color.White
+                                ),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(40.dp)
                             ) {
-                                Button(
-                                    onClick = onCreateListingClick,
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange),
-                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                                    modifier = Modifier.height(36.dp)
-                                ) {
-                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("New Package", fontSize = 12.sp, fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold)
-                                }
-
-                                FilledTonalButton(
-                                    onClick = onViewCreditsClick,
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.filledTonalButtonColors(
-                                        containerColor = Color.White.copy(alpha = 0.18f),
-                                        contentColor = Color.White
-                                    ),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                                    modifier = Modifier.height(36.dp)
-                                ) {
-                                    Icon(Icons.Default.CreditCard, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Recharge", fontSize = 12.sp, fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold)
-                                }
+                                Icon(Icons.Default.CreditCard, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Recharge", fontSize = 13.sp, fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }
@@ -260,67 +276,93 @@ fun AgencyDashboardScreen(
             }
         }
 
-        // Stats Grid
+        // Stats Grid — flat bordered container, no card shadows
         item {
             Text(
                 text = "Performance Overview",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
                 color = DeepNavy,
                 fontFamily = PoppinsFontFamily
             )
             Spacer(modifier = Modifier.height(10.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .border(
+                        width = 1.dp,
+                        color = Color(0xFFE2E8F0),
+                        shape = RoundedCornerShape(14.dp)
+                    )
+                    .background(Color.White)
             ) {
-                StatCard(
-                    title = "Total Packages",
-                    value = "${analytics.totalListings}",
-                    icon = Icons.Default.Luggage,
-                    iconTint = PrimaryOrange,
-                    iconBgColor = PrimaryOrange.copy(alpha = 0.1f),
-                    modifier = Modifier.weight(1f),
-                    subtitle = "${analytics.approvedListings} Live"
-                )
-
-                StatCard(
-                    title = "Pending Review",
-                    value = "${analytics.pendingListings}",
-                    icon = Icons.Default.HourglassTop,
-                    iconTint = Color(0xFFF57F17),
-                    iconBgColor = Color(0xFFFFF8E1),
-                    modifier = Modifier.weight(1f),
-                    subtitle = "Awaiting verification"
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatCard(
-                    title = "Traveler Leads",
-                    value = "${recentChats.size.coerceAtLeast(analytics.totalInquiries)}",
-                    icon = Icons.Default.Chat,
-                    iconTint = M3Info,
-                    iconBgColor = M3Info.copy(alpha = 0.1f),
-                    modifier = Modifier.weight(1f),
-                    subtitle = "Active inquiries"
-                )
-
-                StatCard(
-                    title = "Available Credits",
-                    value = "${profile.credits}",
-                    icon = Icons.Default.MonetizationOn,
-                    iconTint = PrimaryOrange,
-                    iconBgColor = PrimaryOrange.copy(alpha = 0.1f),
-                    modifier = Modifier.weight(1f),
-                    subtitle = "Tap to recharge"
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatCard(
+                        title = "Total Packages",
+                        value = "${analytics.totalListings}",
+                        icon = Icons.Default.Luggage,
+                        iconTint = PrimaryOrange,
+                        iconBgColor = PrimaryOrange.copy(alpha = 0.08f),
+                        modifier = Modifier.weight(1f),
+                        subtitle = "${analytics.approvedListings} Live"
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(60.dp)
+                            .align(Alignment.CenterVertically)
+                            .background(Color(0xFFE2E8F0))
+                    )
+                    StatCard(
+                        title = "Pending Review",
+                        value = "${analytics.pendingListings}",
+                        icon = Icons.Default.HourglassTop,
+                        iconTint = Color(0xFFF57F17),
+                        iconBgColor = Color(0xFFFFF8E1),
+                        modifier = Modifier.weight(1f),
+                        subtitle = "Awaiting approval"
+                    )
+                }
+                HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 1.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatCard(
+                        title = "Traveler Leads",
+                        value = "$todaysLeadsCount",
+                        icon = Icons.Default.Chat,
+                        iconTint = M3Info,
+                        iconBgColor = M3Info.copy(alpha = 0.08f),
+                        modifier = Modifier.weight(1f),
+                        subtitle = "Today's active inquiries"
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(60.dp)
+                            .align(Alignment.CenterVertically)
+                            .background(Color(0xFFE2E8F0))
+                    )
+                    StatCard(
+                        title = "Available Credits",
+                        value = "${profile.credits}",
+                        icon = Icons.Default.CurrencyRupee,
+                        iconTint = PrimaryOrange,
+                        iconBgColor = PrimaryOrange.copy(alpha = 0.08f),
+                        modifier = Modifier.weight(1f),
+                        subtitle = "Tap to recharge"
+                    )
+                }
             }
         }
 
@@ -356,103 +398,94 @@ fun AgencyDashboardScreen(
 
         if (recentChats.isEmpty()) {
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(14.dp))
+                        .background(Color.White)
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(modifier = Modifier.padding(24.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "No traveler messages yet.",
-                            fontSize = 13.sp,
-                            color = TextSecondary,
-                            fontFamily = InterFontFamily
-                        )
-                    }
+                    Text(
+                        text = "No traveler messages yet.",
+                        fontSize = 13.sp,
+                        color = TextSecondary,
+                        fontFamily = InterFontFamily
+                    )
                 }
             }
         } else {
-            items(recentChats) { chat ->
-                val timeStr = remember(chat.lastMessageTimestamp) {
-                    SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(chat.lastMessageTimestamp))
-                }
-                val dateStr = remember(chat.lastMessageTimestamp) {
-                    SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(chat.lastMessageTimestamp))
-                }
-
-                val avatarBgColors = remember {
-                    listOf(
-                        Color(0xFFE8F5E9) to Color(0xFF2E7D32), // Soft Green
-                        Color(0xFFE3F2FD) to Color(0xFF1565C0), // Soft Blue
-                        Color(0xFFFFF3E0) to Color(0xFFE65100), // Soft Orange
-                        Color(0xFFF3E5F5) to Color(0xFF7B1FA2)  // Soft Purple
-                    )
-                }
-                val colorPair = avatarBgColors[kotlin.math.abs(chat.otherUserId.hashCode()) % avatarBgColors.size]
-
-                Card(
+            // Wrap all lead rows in a single bordered container
+            item {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onChatClick(chat) },
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(14.dp))
+                        .background(Color.White)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Soft-tinted Avatar Circle
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .background(colorPair.first, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            val initialText = if (chat.otherUserName.startsWith("Lead #")) {
-                                "#" + chat.otherUserName.removePrefix("Lead #")
-                            } else {
-                                chat.otherUserName.take(1).uppercase()
-                            }
-                            Text(
-                                text = initialText,
-                                fontSize = if (initialText.length > 2) 13.sp else 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colorPair.second
-                            )
+                    recentChats.forEachIndexed { index, chat ->
+                        val timeStr = remember(chat.lastMessageTimestamp) {
+                            SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(chat.lastMessageTimestamp))
+                        }
+                        val dateStr = remember(chat.lastMessageTimestamp) {
+                            SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(chat.lastMessageTimestamp))
                         }
 
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        // Middle Details: Name, Package Title, Date
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = chat.otherUserName,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = DeepNavy,
-                                fontFamily = InterFontFamily,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                        val avatarBgColors = remember {
+                            listOf(
+                                Color(0xFFE8F5E9) to Color(0xFF2E7D32),
+                                Color(0xFFE3F2FD) to Color(0xFF1565C0),
+                                Color(0xFFFFF3E0) to Color(0xFFE65100),
+                                Color(0xFFF3E5F5) to Color(0xFF7B1FA2)
                             )
+                        }
+                        val colorPair = avatarBgColors[kotlin.math.abs(chat.otherUserId.hashCode()) % avatarBgColors.size]
 
-                            if (!chat.relatedListingTitle.isNullOrBlank()) {
-                                Spacer(modifier = Modifier.height(2.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onChatClick(chat) }
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Avatar circle
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .background(colorPair.first, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                val initialText = if (chat.otherUserName.startsWith("Lead #")) {
+                                    "#" + chat.otherUserName.removePrefix("Lead #")
+                                } else {
+                                    chat.otherUserName.take(1).uppercase()
+                                }
                                 Text(
-                                    text = chat.relatedListingTitle,
-                                    fontSize = 12.sp,
-                                    color = Color(0xFF64748B),
+                                    text = initialText,
+                                    fontSize = if (initialText.length > 2) 12.sp else 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colorPair.second
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            // Middle: name + subtitle
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = chat.otherUserName,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = DeepNavy,
                                     fontFamily = InterFontFamily,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                            } else {
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = chat.lastMessage,
+                                    text = if (!chat.relatedListingTitle.isNullOrBlank()) chat.relatedListingTitle else chat.lastMessage,
                                     fontSize = 12.sp,
                                     color = TextSecondary,
                                     fontFamily = InterFontFamily,
@@ -461,74 +494,41 @@ fun AgencyDashboardScreen(
                                 )
                             }
 
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
 
-                            // Date Info (📅 15 Oct 2025) - No number of travelers as requested!
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CalendarToday,
-                                    contentDescription = null,
-                                    tint = Color(0xFF94A3B8),
-                                    modifier = Modifier.size(13.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = dateStr,
-                                    fontSize = 11.sp,
-                                    color = Color(0xFF64748B),
-                                    fontWeight = FontWeight.Medium,
-                                    fontFamily = InterFontFamily
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Right Column: Time, Status Badge (New/Replied), and Direct Chat Button
-                        Column(
-                            horizontalAlignment = Alignment.End,
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = timeStr,
-                                fontSize = 11.sp,
-                                color = Color(0xFF94A3B8),
-                                fontFamily = InterFontFamily
-                            )
-
-                            // Status Badge
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = if (chat.unreadCount > 0) Color(0xFFE8F5E9) else Color(0xFFE3F2FD)
+                            // Right: time + badge
+                            Column(
+                                horizontalAlignment = Alignment.End,
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Text(
-                                    text = if (chat.unreadCount > 0) "New" else "Replied",
-                                    color = if (chat.unreadCount > 0) Color(0xFF2E7D32) else Color(0xFF1976D2),
+                                    text = timeStr,
                                     fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+                                    color = Color(0xFF94A3B8),
                                     fontFamily = InterFontFamily
                                 )
-                            }
-
-                            // Direct System Chat Button
-                            Surface(
-                                onClick = { onChatClick(chat) },
-                                shape = RoundedCornerShape(12.dp),
-                                color = PrimaryOrange,
-                                contentColor = Color.White,
-                                modifier = Modifier.size(38.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.Chat,
-                                        contentDescription = "Chat Direct",
-                                        modifier = Modifier.size(18.dp)
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = if (chat.unreadCount > 0) Color(0xFFE8F5E9) else Color(0xFFF1F5F9)
+                                ) {
+                                    Text(
+                                        text = if (chat.unreadCount > 0) "New" else "Replied",
+                                        color = if (chat.unreadCount > 0) Color(0xFF2E7D32) else Color(0xFF64748B),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                        fontFamily = InterFontFamily
                                     )
                                 }
                             }
+                        }
+
+                        if (index < recentChats.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                                color = Color(0xFFE2E8F0),
+                                thickness = 0.8.dp
+                            )
                         }
                     }
                 }

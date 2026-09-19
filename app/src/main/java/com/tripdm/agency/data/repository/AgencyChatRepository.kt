@@ -282,5 +282,36 @@ class AgencyChatRepository(
             Result.failure(e)
         }
     }
+
+    suspend fun markMessagesAsRead(agencyId: String, otherUserId: String): Result<Unit> {
+        return try {
+            val trimmedAgencyId = agencyId.trim()
+            val trimmedOtherId = otherUserId.trim()
+            val unreadDocs = firestore.collection("chat_messages")
+                .whereEqualTo("to_user_id", trimmedAgencyId)
+                .whereEqualTo("from_user_id", trimmedOtherId)
+                .get()
+                .await()
+
+            val batch = firestore.batch()
+            var hasUpdates = false
+            for (doc in unreadDocs.documents) {
+                val isRead = doc.getBoolean("is_read") == true || doc.getString("status") == "read"
+                if (!isRead) {
+                    batch.update(doc.reference, mapOf(
+                        "is_read" to true,
+                        "status" to "read"
+                    ))
+                    hasUpdates = true
+                }
+            }
+            if (hasUpdates) {
+                batch.commit().await()
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
 

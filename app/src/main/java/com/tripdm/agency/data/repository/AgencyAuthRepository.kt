@@ -322,6 +322,38 @@ class AgencyAuthRepository(
         awaitClose { listener.remove() }
     }
 
+    suspend fun updateAgencyProfile(profile: AgencyProfile): Result<Unit> {
+        return try {
+            val updates = hashMapOf<String, Any?>(
+                "companyName" to profile.companyName.trim(),
+                "name" to profile.contactPersonName.trim().ifBlank { profile.companyName.trim() },
+                "contactPersonName" to profile.contactPersonName.trim(),
+                "email" to profile.email.trim(),
+                "authEmail" to profile.email.trim(),
+                "contactEmail" to profile.email.trim(),
+                "phone" to profile.phone.trim(),
+                "contactNumber" to profile.phone.trim(),
+                "countryCode" to profile.countryCode,
+                "businessLocation" to profile.businessLocation.trim(),
+                "fullAddress" to profile.fullAddress.trim(),
+                "description" to profile.description.trim(),
+                "agencyDescription" to profile.description.trim(),
+                "operatingFromHome" to profile.operatingFromHome,
+                "operatingFromOffice" to profile.operatingFromOffice,
+                "officeAddress" to profile.officeAddress.trim(),
+                "logoUrl" to profile.logoUrl.trim(),
+                "agencyLogo" to profile.logoUrl.trim(),
+                "avatarUrl" to profile.logoUrl.trim(),
+                "updatedAt" to System.currentTimeMillis()
+            )
+            firestore.collection("users").document(profile.id).update(updates).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating agency profile: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
     fun signOut() {
         auth.signOut()
     }

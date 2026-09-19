@@ -36,26 +36,29 @@ import com.tripdm.agency.data.model.ChatMessageStatus
 import java.text.SimpleDateFormat
 import java.util.*
 
-// Clean Material3 date separator pill
+import androidx.compose.foundation.isSystemInDarkTheme
+
+// Clean date separator pill matching web app design
 @Composable
 fun DateSeparator(dateText: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 10.dp),
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            color = MaterialTheme.colorScheme.secondaryContainer,
+            color = Color(0xFFFFFFFF),
             shape = CircleShape,
-            shadowElevation = 0.dp
+            border = BorderStroke(0.5.dp, Color(0x20000000)),
+            shadowElevation = 0.5.dp
         ) {
             Text(
                 text = dateText,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                color = Color(0xFF4B5563),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)
             )
         }
     }
@@ -85,21 +88,17 @@ fun AgencyMessageBubble(
     val context = LocalContext.current
 
     val bubbleColor = if (isFromCurrentUser) {
-        MaterialTheme.colorScheme.secondaryContainer
+        Color(0xFFDCF8C6)
     } else {
-        MaterialTheme.colorScheme.primaryContainer
+        Color(0xFFFFFFFF)
     }
 
-    val textColor = if (isFromCurrentUser) {
-        MaterialTheme.colorScheme.onSecondaryContainer
-    } else {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    }
+    val textColor = Color(0xFF111827)
 
     val timestampColor = if (isFromCurrentUser) {
-        MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+        Color(0xFF4B5563)
     } else {
-        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+        Color(0xFF6B7280)
     }
 
     // Custom corner shape for bubbles (sharp on tail side)
@@ -303,7 +302,7 @@ fun AgencyMessageBubble(
                                     val icon = if (status == ChatMessageStatus.SENT) Icons.Default.Check
                                                else Icons.Default.DoneAll
                                     val tint = if (status == ChatMessageStatus.READ)
-                                        MaterialTheme.colorScheme.primary
+                                        Color(0xFF34B7F1)
                                     else
                                         timestampColor
                                     Icon(

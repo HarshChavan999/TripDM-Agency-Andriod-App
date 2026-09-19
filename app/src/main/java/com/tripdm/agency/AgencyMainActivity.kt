@@ -179,6 +179,7 @@ fun AgencyApp(
 fun AgencyMainPortal(
     profile: AgencyProfile,
     onSignOut: () -> Unit,
+    authViewModel: AgencyAuthViewModel = viewModel(),
     dashboardViewModel: AgencyDashboardViewModel = viewModel(),
     listingViewModel: AgencyListingViewModel = viewModel(),
     chatViewModel: AgencyChatViewModel = viewModel(),
@@ -419,6 +420,11 @@ fun AgencyMainPortal(
                         onViewCreditsClick = {
                             selectedBottomTab = 3
                             currentScreen = AgencyScreen.CREDITS
+                        },
+                        onUpdateProfile = { updatedProfile ->
+                            authViewModel.updateAgencyProfile(updatedProfile) { success, msg ->
+                                Toast.makeText(context, msg ?: if (success) "Profile updated!" else "Update failed", Toast.LENGTH_SHORT).show()
+                            }
                         },
                         onSignOut = onSignOut
                     )

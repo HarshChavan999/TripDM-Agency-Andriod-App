@@ -100,13 +100,26 @@ class AgencyListingRepository(
         val countryNameVal = doc.get("countryName").toSingleString().ifEmpty {
             doc.get("countryNames").toStringList().firstOrNull() ?: ""
         }
+        val countryNamesVal = doc.get("countryNames").toStringList().ifEmpty {
+            listOfNotNull(countryNameVal.takeIf { it.isNotBlank() })
+        }
+
+        val stateNamesVal = doc.get("stateNames").toStringList().ifEmpty {
+            listOfNotNull(stateNameVal.takeIf { it.isNotBlank() })
+        }
 
         val hotelTypeVal = doc.get("hotelType").toSingleString().ifEmpty {
             doc.get("hotelTypes").toStringList().firstOrNull() ?: "deluxe"
         }
+        val hotelTypesVal = doc.get("hotelTypes").toStringList().ifEmpty {
+            listOfNotNull(hotelTypeVal.takeIf { it.isNotBlank() })
+        }
 
         val mealPlanVal = doc.get("mealPlan").toSingleString().ifEmpty {
-            doc.get("mealPlan").toStringList().firstOrNull() ?: "breakfast"
+            doc.get("mealPlans").toStringList().firstOrNull() ?: "breakfast"
+        }
+        val mealPlansVal = doc.get("mealPlans").toStringList().ifEmpty {
+            listOfNotNull(mealPlanVal.takeIf { it.isNotBlank() })
         }
 
         val photoList = (
@@ -139,12 +152,16 @@ class AgencyListingRepository(
             packageType = doc.get("packageType").toSingleString("domestic"),
             countryName = countryNameVal,
             stateName = stateNameVal,
+            countryNames = countryNamesVal,
+            stateNames = stateNamesVal,
             pickUpLocation = doc.get("pickUpLocation").toSingleString(),
             dropLocation = doc.get("dropLocation").toSingleString(),
             placesCovered = places,
             tourCategories = doc.get("tourCategories").toStringList(),
             hotelType = hotelTypeVal,
+            hotelTypes = hotelTypesVal,
             mealPlan = mealPlanVal,
+            mealPlans = mealPlansVal,
             itinerary = itinerary,
             inclusions = doc.get("inclusions").toStringList().ifEmpty { doc.get("defaultInclusions").toStringList() },
             exclusions = doc.get("exclusions").toStringList().ifEmpty { doc.get("defaultExclusions").toStringList() },
@@ -153,7 +170,7 @@ class AgencyListingRepository(
             duration = durationVal,
             discountCategory = doc.get("discountCategory").toSingleString("none"),
             isTrending = doc.get("isTrending").toBooleanSafe(),
-            season = doc.get("season").toSingleString("all-seasons"),
+            season = doc.get("season").toSingleString(),
             eventType = doc.get("eventType").toSingleString(),
             experienceType = doc.get("experienceType").toStringList(),
             photos = photoList,

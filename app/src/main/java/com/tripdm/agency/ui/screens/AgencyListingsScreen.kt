@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tripdm.agency.data.model.AgencyListing
 import com.tripdm.agency.ui.components.AgencyListingCard
+import com.tripdm.agency.ui.components.AgencyPackagePreviewModal
 import com.tripdm.agency.ui.theme.*
 import com.tripdm.agency.viewmodel.ListingFilterTab
 
@@ -38,6 +39,18 @@ fun AgencyListingsScreen(
     onListingClick: (AgencyListing) -> Unit
 ) {
     var listingToDelete by remember { mutableStateOf<String?>(null) }
+    var previewListing by remember { mutableStateOf<AgencyListing?>(null) }
+
+    if (previewListing != null) {
+        AgencyPackagePreviewModal(
+            listing = previewListing!!,
+            onDismiss = { previewListing = null },
+            onEditClick = { listing ->
+                previewListing = null
+                onEditListingClick(listing)
+            }
+        )
+    }
 
     if (listingToDelete != null) {
         AlertDialog(
@@ -50,7 +63,7 @@ fun AgencyListingsScreen(
                         listingToDelete?.let { onDeleteListingClick(it) }
                         listingToDelete = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = M3Error)
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
                 ) {
                     Text("Delete")
                 }
@@ -64,6 +77,7 @@ fun AgencyListingsScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onCreateListingClick,
@@ -78,24 +92,53 @@ fun AgencyListingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(LightGray)
+                .background(Color(0xFFFAFAFA))
                 .padding(padding)
         ) {
-            // Search Bar & Filter Header
+            // ── Webapp Style Header ──────────────────
             Surface(
                 color = Color.White,
-                shadowElevation = 1.dp
+                shadowElevation = 0.5.dp
             ) {
-                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("🌴", fontSize = 22.sp)
+                        Text(
+                            text = "Your Travel Listings",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DeepNavy,
+                            fontFamily = PoppinsFontFamily
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "Manage and search your travel packages (${listings.size} total)",
+                        fontSize = 13.sp,
+                        color = Color(0xFF64748B),
+                        fontFamily = InterFontFamily
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = onSearchChange,
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = {
                             Text(
-                                text = "Search packages by title or location...",
-                                color = TextSecondary.copy(alpha = 0.7f),
-                                fontSize = 14.sp,
+                                text = "Search packages by title, state, price...",
+                                color = Color(0xFF94A3B8),
+                                fontSize = 13.sp,
                                 fontFamily = InterFontFamily
                             )
                         },
@@ -103,8 +146,8 @@ fun AgencyListingsScreen(
                             Icon(
                                 imageVector = Icons.Default.Search,
                                 contentDescription = "Search",
-                                tint = TextSecondary,
-                                modifier = Modifier.size(20.dp)
+                                tint = Color(0xFF94A3B8),
+                                modifier = Modifier.size(18.dp)
                             )
                         },
                         trailingIcon = {
@@ -113,29 +156,28 @@ fun AgencyListingsScreen(
                                     Icon(
                                         imageVector = Icons.Default.Close,
                                         contentDescription = "Clear Search",
-                                        tint = TextSecondary,
-                                        modifier = Modifier.size(18.dp)
+                                        tint = Color(0xFF94A3B8),
+                                        modifier = Modifier.size(16.dp)
                                     )
                                 }
                             }
                         },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = LightGray.copy(alpha = 0.6f),
-                            unfocusedContainerColor = LightGray.copy(alpha = 0.6f),
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
                             focusedBorderColor = PrimaryOrange,
-                            unfocusedBorderColor = Color.Transparent,
-                            cursorColor = PrimaryOrange
+                            unfocusedBorderColor = Color(0xFFE2E8F0)
                         ),
-                        shape = RoundedCornerShape(24.dp),
+                        shape = RoundedCornerShape(20.dp),
                         textStyle = TextStyle(
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
                             fontFamily = InterFontFamily,
                             color = DeepNavy
                         )
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(ListingFilterTab.values()) { tab ->
@@ -159,15 +201,18 @@ fun AgencyListingsScreen(
                                 },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = PrimaryOrange,
-                                    selectedLabelColor = Color.White
-                                )
+                                    selectedLabelColor = Color.White,
+                                    containerColor = Color(0xFFF1F5F9),
+                                    labelColor = DeepNavy
+                                ),
+                                border = null
                             )
                         }
                     }
                 }
             }
 
-            // Listings List
+            // ── Listings List ────────────────────────
             if (listings.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -207,15 +252,15 @@ fun AgencyListingsScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(listings, key = { it.id }) { listing ->
                         AgencyListingCard(
                             listing = listing,
                             onEdit = { onEditListingClick(listing) },
                             onDelete = { listingToDelete = listing.id },
-                            onClick = { onListingClick(listing) }
+                            onClick = { previewListing = listing }
                         )
                     }
                     item {

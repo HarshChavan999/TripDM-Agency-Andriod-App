@@ -3,9 +3,6 @@ package com.tripdm.agency.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,60 +28,51 @@ fun StatCard(
     modifier: Modifier = Modifier,
     subtitle: String? = null
 ) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    Column(
+        modifier = modifier
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = title,
-                    fontSize = 13.sp,
-                    fontFamily = InterFontFamily,
-                    fontWeight = FontWeight.Medium,
-                    color = TextSecondary
-                )
-                Box(
-                    modifier = Modifier
-                        .size(34.dp)
-                        .background(iconBgColor, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = title,
-                        tint = iconTint,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = value,
-                fontSize = 24.sp,
-                fontFamily = PoppinsFontFamily,
-                fontWeight = FontWeight.Bold,
-                color = DeepNavy
+                text = title,
+                fontSize = 12.sp,
+                fontFamily = InterFontFamily,
+                fontWeight = FontWeight.Medium,
+                color = TextSecondary
             )
-            if (subtitle != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = subtitle,
-                    fontSize = 11.sp,
-                    fontFamily = InterFontFamily,
-                    color = TextSecondary
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .background(iconBgColor, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    tint = iconTint,
+                    modifier = Modifier.size(16.dp)
                 )
             }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = value,
+            fontSize = 22.sp,
+            fontFamily = PoppinsFontFamily,
+            fontWeight = FontWeight.Bold,
+            color = DeepNavy
+        )
+        if (subtitle != null) {
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                fontSize = 11.sp,
+                fontFamily = InterFontFamily,
+                color = TextSecondary
+            )
         }
     }
 }

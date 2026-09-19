@@ -23,18 +23,43 @@ class AgencyChatViewModel(
     private val _activeMessages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val activeMessages: StateFlow<List<ChatMessage>> = _activeMessages.asStateFlow()
 
+    private val messagesCache = mutableMapOf<String, List<ChatMessage>>()
+
     fun loadConversations(agencyId: String) {
         viewModelScope.launch {
             repository.observeConversations(agencyId).collect { list ->
-                _conversations.value = list
+                val activeUserId = _activeConversation.value?.otherUserId
+                val updatedList = if (activeUserId != null) {
+                    list.map { conv ->
+                        if (conv.otherUserId == activeUserId) conv.copy(unreadCount = 0) else conv
+                    }
+                } else list
+                _conversations.value = updatedList
             }
         }
     }
 
     fun openConversation(agencyId: String, conversation: ChatConversation) {
-        _activeConversation.value = conversation
+        _activeConversation.value = conversation.copy(unreadCount = 0)
+        _conversations.value = _conversations.value.map { conv ->
+            if (conv.otherUserId == conversation.otherUserId) conv.copy(unreadCount = 0) else conv
+        }
+
+        // Preload messages instantly from in-memory cache if available
+        val cached = messagesCache[conversation.otherUserId]
+        if (cached != null) {
+            _activeMessages.value = cached
+        } else {
+            _activeMessages.value = emptyList()
+        }
+
+        viewModelScope.launch {
+            repository.markMessagesAsRead(agencyId, conversation.otherUserId)
+        }
+
         viewModelScope.launch {
             repository.observeMessages(agencyId, conversation.otherUserId).collect { msgs ->
+                messagesCache[conversation.otherUserId] = msgs
                 _activeMessages.value = msgs
             }
         }

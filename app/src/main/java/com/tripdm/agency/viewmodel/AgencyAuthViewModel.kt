@@ -129,6 +129,21 @@ class AgencyAuthViewModel(
         }
     }
 
+    fun updateAgencyProfile(updatedProfile: AgencyProfile, onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            repository.updateAgencyProfile(updatedProfile).fold(
+                onSuccess = {
+                    _currentProfile.value = updatedProfile
+                    _authState.value = AgencyAuthState.Authenticated(updatedProfile)
+                    onResult(true, "Agency profile updated successfully!")
+                },
+                onFailure = { err ->
+                    onResult(false, err.message ?: "Failed to update profile.")
+                }
+            )
+        }
+    }
+
     fun signOut() {
         repository.signOut()
         _currentProfile.value = null
