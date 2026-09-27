@@ -43,15 +43,32 @@ class AgencyProfileViewModel(
         }
     }
 
-    fun purchasePlan(agencyId: String, plan: CreditPlan) {
+    fun purchasePlan(
+        agencyId: String,
+        plan: CreditPlan,
+        paymentMethod: String = "Google Pay",
+        paymentId: String = "",
+        approvalRefNo: String = "",
+        onResult: ((Boolean, String) -> Unit)? = null
+    ) {
         viewModelScope.launch {
             _isPurchasing.value = true
-            creditsRepository.purchasePlan(agencyId, plan).fold(
+            creditsRepository.purchasePlan(
+                agencyId = agencyId,
+                plan = plan,
+                paymentMethod = paymentMethod,
+                paymentId = paymentId,
+                approvalRefNo = approvalRefNo
+            ).fold(
                 onSuccess = {
-                    _purchaseSuccess.value = "Successfully purchased ${plan.name}! +${plan.credits} credits added."
+                    val msg = "Successfully purchased ${plan.name}! +${plan.credits} credits added."
+                    _purchaseSuccess.value = msg
+                    onResult?.invoke(true, msg)
                 },
                 onFailure = { err ->
-                    _purchaseSuccess.value = "Purchase error: ${err.message}"
+                    val msg = "Purchase error: ${err.message}"
+                    _purchaseSuccess.value = msg
+                    onResult?.invoke(false, msg)
                 }
             )
             _isPurchasing.value = false

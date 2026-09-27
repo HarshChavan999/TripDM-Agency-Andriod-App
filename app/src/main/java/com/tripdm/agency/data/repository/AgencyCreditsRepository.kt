@@ -82,7 +82,10 @@ class AgencyCreditsRepository(
                             credits = (doc.get("credits") as? Number)?.toInt() ?: doc.getLong("credits")?.toInt() ?: 0,
                             description = doc.getString("description") ?: "",
                             timestamp = doc.getLong("timestamp") ?: System.currentTimeMillis(),
-                            status = doc.getString("status") ?: "completed"
+                            status = doc.getString("status") ?: "completed",
+                            paymentMethod = doc.getString("paymentMethod") ?: "Google Pay",
+                            paymentId = doc.getString("paymentId") ?: "",
+                            approvalRefNo = doc.getString("approvalRefNo") ?: ""
                         )
                     }
                     emitMerged()
@@ -104,6 +107,9 @@ class AgencyCreditsRepository(
                         val creds = (map["credits"] as? Number)?.toInt() ?: 0
                         val ts = (map["timestamp"] as? Number)?.toLong() ?: System.currentTimeMillis()
                         val type = map["type"] as? String ?: "purchase"
+                        val method = map["paymentMethod"] as? String ?: "Google Pay"
+                        val pId = map["paymentId"] as? String ?: ""
+                        val refNo = map["approvalRefNo"] as? String ?: ""
                         CreditTransaction(
                             id = id,
                             agencyId = agencyId,
@@ -112,7 +118,10 @@ class AgencyCreditsRepository(
                             credits = creds,
                             description = desc,
                             timestamp = ts,
-                            status = "completed"
+                            status = "completed",
+                            paymentMethod = method,
+                            paymentId = pId,
+                            approvalRefNo = refNo
                         )
                     }
                     emitMerged()
@@ -126,11 +135,17 @@ class AgencyCreditsRepository(
         }
     }
 
-    suspend fun purchasePlan(agencyId: String, plan: CreditPlan): Result<Unit> {
+    suspend fun purchasePlan(
+        agencyId: String,
+        plan: CreditPlan,
+        paymentMethod: String = "Google Pay",
+        paymentId: String = "",
+        approvalRefNo: String = ""
+    ): Result<Unit> {
         return try {
             val userRef = firestore.collection("users").document(agencyId)
             val now = System.currentTimeMillis()
-            val txId = "TX-${plan.id.uppercase()}-${now}"
+            val txId = if (paymentId.isNotBlank()) paymentId else "TX-${plan.id.uppercase()}-${now}"
 
             val txMap = hashMapOf<String, Any>(
                 "id" to txId,
@@ -138,9 +153,12 @@ class AgencyCreditsRepository(
                 "type" to "purchase",
                 "amount" to plan.price,
                 "credits" to plan.credits,
-                "description" to "Purchased ${plan.name} (+${plan.credits} credits)",
+                "description" to "Purchased ${plan.name} (+${plan.credits} credits via $paymentMethod)",
                 "timestamp" to now,
-                "status" to "completed"
+                "status" to "completed",
+                "paymentMethod" to paymentMethod,
+                "paymentId" to paymentId,
+                "approvalRefNo" to approvalRefNo
             )
 
             firestore.runTransaction { transaction ->

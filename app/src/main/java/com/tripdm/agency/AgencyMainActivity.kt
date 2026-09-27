@@ -440,6 +440,15 @@ fun AgencyMainPortal(
                         onPurchasePlan = { plan ->
                             profileViewModel.purchasePlan(profile.id, plan)
                         },
+                        onPurchaseCompleted = { plan, method, paymentId, approvalRef ->
+                            profileViewModel.purchasePlan(
+                                agencyId = profile.id,
+                                plan = plan,
+                                paymentMethod = method,
+                                paymentId = paymentId,
+                                approvalRefNo = approvalRef
+                            )
+                        },
                         onClearPurchaseMessage = {
                             profileViewModel.clearPurchaseMessage()
                         },

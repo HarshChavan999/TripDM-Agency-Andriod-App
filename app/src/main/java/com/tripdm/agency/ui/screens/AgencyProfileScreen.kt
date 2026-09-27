@@ -370,15 +370,33 @@ fun AgencyProfileScreen(
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(10.dp))
-                                Column {
-                                    Text(
-                                        text = tx.description,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = DeepNavy,
-                                        fontFamily = InterFontFamily,
-                                        maxLines = 1
-                                    )
+                                Column(modifier = Modifier.weight(1f, fill = false)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = tx.description,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = DeepNavy,
+                                            fontFamily = InterFontFamily,
+                                            maxLines = 1,
+                                            modifier = Modifier.weight(1f, fill = false)
+                                        )
+                                        if (tx.paymentMethod.isNotBlank()) {
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Surface(
+                                                color = if (tx.paymentMethod.contains("Google", ignoreCase = true)) Color(0xFFE8F0FE) else PrimaryOrange.copy(alpha = 0.12f),
+                                                shape = RoundedCornerShape(4.dp)
+                                            ) {
+                                                Text(
+                                                    text = if (tx.paymentMethod.contains("Google", ignoreCase = true)) "GPay" else tx.paymentMethod,
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (tx.paymentMethod.contains("Google", ignoreCase = true)) Color(0xFF1A73E8) else PrimaryOrange,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        }
+                                    }
                                     Text(
                                         text = timeStr,
                                         fontSize = 10.sp,

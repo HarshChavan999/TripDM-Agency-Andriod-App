@@ -18,7 +18,10 @@ data class CreditTransaction(
     val credits: Int = 0,
     val description: String = "",
     val timestamp: Long = System.currentTimeMillis(),
-    val status: String = "completed"
+    val status: String = "completed",
+    val paymentMethod: String = "Google Pay", // "Google Pay", "UPI", "Dev Simulation"
+    val paymentId: String = "",
+    val approvalRefNo: String = ""
 )
 
 val SampleCreditPlans = listOf(

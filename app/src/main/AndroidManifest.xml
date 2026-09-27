@@ -9,6 +9,23 @@
     <!-- Notification permission (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Package visibility declarations for Google Pay & UPI apps (Android 11+) -->
+    <queries>
+        <!-- Google Pay India (Tez) -->
+        <package android:name="com.google.android.apps.nbu.paisa.user" />
+        <!-- Paytm -->
+        <package android:name="net.one97.paytm" />
+        <!-- PhonePe -->
+        <package android:name="com.phonepe.app" />
+        <!-- BHIM -->
+        <package android:name="in.org.npci.upiapp" />
+        <!-- Generic UPI scheme query -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="upi" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
